@@ -8,14 +8,18 @@ const app = express()
 app.use(cors())
 
 app.post('/', upload.single('pdf'), (req, res) => {
+  const data = JSON.parse(req.body.meta)
   const writer = hummus.createWriterToModify(req.file.path, {
     modifiedFilePath: 'modified/' + req.file.filename
   })
-  // const data = JSON.parse(req.body.meta)
-  const data = {
-    date_of_birth: '12/11/2001',
-    full_legal_name: 'White Bunny'
+
+  // Add meta data
+  const infoDictionary = writer.getDocumentContext().getInfoDictionary()
+  for (const key of Object.keys(data)) {
+    infoDictionary.addAdditionalInfoEntry(key, data[key])
   }
+  
+  // Fill form fields
   fillForm(writer, data)
   writer.end()
   res.send({ msg: 'Hello World!' })
