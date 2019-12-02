@@ -1,6 +1,12 @@
 const express = require('express')
 const QRCode = require('qrcode')
 const cors = require('cors')
+const fetch = require('node-fetch')
+const crypto = require('crypto')
+const fs = require('fs')
+const { promisify } = require('util')
+const readFileAsync = promisify(fs.readFile)
+// const writeFileAsync = promisify(fs.writeFile)
 const multer  = require('multer')
 const upload = multer({ dest: 'uploads/' })
 const hummus = require('hummus'),
@@ -9,46 +15,65 @@ const app = express()
 app.use(cors())
 
 app.post('/', upload.single('pdf'), async (req, res) => {
-  const data = JSON.parse(req.body.meta)
-  const writer = hummus.createWriterToModify(req.file.path, {
-    modifiedFilePath: 'modified/' + req.file.filename
-  })
-  const reader = hummus.createReader(req.file.path)
-
-  // Add meta data
-  const infoDictionary = writer.getDocumentContext().getInfoDictionary()
-  for (const key of Object.keys(data)) {
-    infoDictionary.addAdditionalInfoEntry(key, data[key])
-  }
-  
-  // Fill form fields
-  fillForm(writer, data)
-
-  // Add QR Code into first page
   try {
-    await QRCode.toFile('qr.png', 'integra')
-  } catch (err) {
-    console.error(err)
-  }
-  const pageBox = reader.parsePage(0).getMediaBox()
-  const pageWidth = pageBox[2] - pageBox[0]
-  const pageHeight = pageBox[3] - pageBox[1]
-  const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
-  const ctx = pageModifier.startContext().getContext()
-  ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
-    transformation: {
-      width: 100,
-      height: 100,
-      fit: 'always'
-    }
-  })
-  pageModifier.endContext().writePage()
-  pageModifier
-    .attachURLLinktoCurrentPage('http://google.com', pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
-    .endContext().writePage()
-  writer.end()
+    const data = JSON.parse(req.body.meta)
+    const writer = hummus.createWriterToModify(req.file.path, {
+      modifiedFilePath: 'modified/' + req.file.filename
+    })
+    const reader = hummus.createReader(req.file.path)
 
-  res.send({ msg: 'Hello World!' })
+    // Add meta data
+    const infoDictionary = writer.getDocumentContext().getInfoDictionary()
+    for (const key of Object.keys(data)) {
+      infoDictionary.addAdditionalInfoEntry(key, data[key])
+    }
+    
+    // Fill form fields
+    fillForm(writer, data)
+
+    // Add QR Code into first page
+    await QRCode.toFile('qr.png', 'integra')
+    const pageBox = reader.parsePage(0).getMediaBox()
+    const pageWidth = pageBox[2] - pageBox[0]
+    const pageHeight = pageBox[3] - pageBox[1]
+    const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
+    const ctx = pageModifier.startContext().getContext()
+    ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
+      transformation: {
+        width: 100,
+        height: 100,
+        fit: 'always'
+      }
+    })
+    pageModifier.endContext().writePage()
+    pageModifier
+      .attachURLLinktoCurrentPage('http://google.com', pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .endContext().writePage()
+    writer.end()
+
+    // SHA-256 hash file
+    const fileData = await readFileAsync('modified/' + req.file.filename)
+    const encryptedData = crypto.createHash('sha256')
+      .update(fileData)
+      .digest('hex')
+    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/registerIdentity', {
+        method: 'post',
+        body: JSON.stringify({  
+          'identityType': 'com.integraledger.lmatid',
+          'metaData': 'esign by mike',
+          'value': encryptedData,
+          'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+        },
+    })
+    // console.log(await response.json())
+    res.send({ data: encryptedData })
+  } catch (err) {
+    res.send(err)
+  }
 })
 
 app.listen(3000, () => {
