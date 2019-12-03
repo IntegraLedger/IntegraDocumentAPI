@@ -5,6 +5,7 @@ const fetch = require('node-fetch')
 const crypto = require('crypto')
 const fs = require('fs')
 const { promisify } = require('util')
+const renameFileAsync = promisify(fs.rename)
 const readFileAsync = promisify(fs.readFile)
 // const writeFileAsync = promisify(fs.writeFile)
 const multer  = require('multer')
@@ -51,8 +52,12 @@ app.post('/', upload.single('pdf'), async (req, res) => {
       .endContext().writePage()
     writer.end()
 
+    // Generate file name (Attach 'SmartDoc' to original filename)
+    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
+    await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
+
     // SHA-256 hash file
-    const fileData = await readFileAsync('modified/' + req.file.filename)
+    const fileData = await readFileAsync('modified/' + fileName)
     const encryptedData = crypto.createHash('sha256')
       .update(fileData)
       .digest('hex')
@@ -69,8 +74,14 @@ app.post('/', upload.single('pdf'), async (req, res) => {
           'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
         },
     })
+    // console.log(encryptedData)
     // console.log(await response.json())
-    res.send({ data: encryptedData })
+    
+    // Attach file name to response header
+    res.setHeader('Access-Control-Expose-Headers', 'file-name')
+    res.setHeader('file-name', fileName)
+
+    res.download('modified/' + fileName, fileName)
   } catch (err) {
     res.send(err)
   }
