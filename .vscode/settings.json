@@ -1,0 +1,8 @@
+{
+  "appService.zipIgnorePattern": [
+    "node_modules{,/**}",
+    ".vscode{,/**}"
+  ],
+  "appService.defaultWebAppToDeploy": "/subscriptions/5ad7adcb-77e7-484e-8d53-3655a18e87ed/resourceGroups/integra-demo/providers/Microsoft.Web/sites/IntegraAPI",
+  "appService.deploySubpath": ""
+}

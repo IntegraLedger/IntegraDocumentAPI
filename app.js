@@ -21,7 +21,9 @@ app.use(cors())
 
 app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
-    const data = req.body
+    const meta = Object.assign({}, req.body)
+    delete meta.subscription_key
+
     // Create pdf writer
     const writer = hummus.createWriterToModify(req.file.path, {
       modifiedFilePath: 'modified/' + req.file.filename
@@ -30,12 +32,13 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
     // Add meta data
     const infoDictionary = writer.getDocumentContext().getInfoDictionary()
-    for (const key of Object.keys(data)) {
-      infoDictionary.addAdditionalInfoEntry(key, data[key])
+    for (const key of Object.keys(meta)) {
+      infoDictionary.addAdditionalInfoEntry(key, meta[key])
     }
-    
+    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
+
     // Fill form fields
-    fillForm(writer, data)
+    fillForm(writer, meta)
 
     // Add QR Code into first page
     await QRCode.toFile('qr.png', 'integra')
@@ -72,11 +75,11 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
           'identityType': 'com.integraledger.lmatid',
           'metaData': 'esign by mike',
           'value': encryptedData,
-          'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+          'Ocp-Apim-Subscription-Key': req.body.subscription_key
         }),
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+          'Ocp-Apim-Subscription-Key': req.body.subscription_key
         },
     })
     // console.log(encryptedData)
@@ -94,15 +97,16 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
 app.post('/doc', upload.single('file'), async (req, res) => {
   try {
-    const data = req.body
-    
+    const meta = Object.assign({}, req.body)
+    delete meta.subscription_key
+
     // Fill merge fields
     const content = fs.readFileSync(req.file.path, 'binary')
     const zip = new PizZip(content)
     const doc = new Docxtemplater()
     
     doc.loadZip(zip)
-    doc.setData(data)
+    doc.setData(meta)
     doc.render()
     const docData = doc.getZip().generate({ type: 'nodebuffer' })
     
@@ -118,10 +122,11 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     
     // Add meta data
     const infoDictionary = writer.getDocumentContext().getInfoDictionary()
-    for (const key of Object.keys(data)) {
-      infoDictionary.addAdditionalInfoEntry(key, data[key])
+    for (const key of Object.keys(meta)) {
+      infoDictionary.addAdditionalInfoEntry(key, meta[key])
     }
-    
+    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
+
     // Add QR Code into first page
     await QRCode.toFile('qr.png', 'integra')
     const pageBox = reader.parsePage(0).getMediaBox()
@@ -155,13 +160,13 @@ app.post('/doc', upload.single('file'), async (req, res) => {
         method: 'post',
         body: JSON.stringify({  
           'identityType': 'com.integraledger.lmatid',
-          'metaData': 'esign by mike',
+          'metaData': '',
           'value': encryptedData,
-          'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+          'Ocp-Apim-Subscription-Key': req.body.subscription_key
         }),
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+          'Ocp-Apim-Subscription-Key': req.body.subscription_key
         },
     })
     // console.log(encryptedData)
@@ -178,6 +183,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
   }
 })
 
-app.listen(3000, () => {
-  console.log('Listening on port 3000!')
+const port = process.env.PORT || 3000
+app.listen(port, () => {
+  console.log('Listening on port ' + port + '!')
 })
