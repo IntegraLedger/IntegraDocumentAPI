@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Authenticated by Integra!</title>
+  </head>
+  <body class="main">
+    <img class="logo" src="../../logo.png" alt="Integra" />
+    <img class="image" src="../../authenticated.png" alt="Authenticated" />
+    <p class="item">
+      GUID: <%= guid %>
+      <br />
+      Hash: <%= hash %>
+      <br />
+      Created At: <%= createdAt %>
+    </p>
+  </body>
+</html>
+<style>
+  .main {
+    margin-top: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .image {
+    max-width: 20%;
+    max-height: 20%;
+  }
+  .item {
+    font-size: 20px;
+    text-align: center;
+  }
+</style>
