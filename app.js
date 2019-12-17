@@ -251,9 +251,10 @@ app.get('/QRVerify/:guid', async (req, res) => {
       const responseJson = await response.json()
       if (responseJson.exists) {
         res.render('success', {
-          guid: responseJson.data[0].Record.identityId,
-          hash: responseJson.data[0].Record.value,
-          createdAt: moment(responseJson.data[0].Record.creationDate).format('LLL')
+          identityId: responseJson.data[0].Record.identityId,
+          value: responseJson.data[0].Record.value,
+          metaData: responseJson.data[0].Record.metaData,
+          creationDate: moment(responseJson.data[0].Record.creationDate).format('LLL')
         })
       } else {
         res.render('failure')
