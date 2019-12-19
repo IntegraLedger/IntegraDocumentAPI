@@ -2,34 +2,113 @@
 <html lang="en">
   <head>
     <title>Authenticated by Integra!</title>
+    <link rel="stylesheet" href="../../dropzone.css">
+    <script src="../../dropzone.js"></script>
+    <script src="../../crypto-js/crypto-js.js"></script>
+    <script>
+      const fileReader = new FileReader();
+      window.Dropzone.options.fileDropzone = {
+        maxFiles: 1,
+        uploadMultiple: false,
+        acceptedFiles: '.pdf,.docx',
+        init: function() {
+          this.on('addedfile', function(file) {
+            this.removeFile(file);
+            fileReader.readAsArrayBuffer(file);
+          });
+        }
+      };
+
+      fileReader.addEventListener('load', function(e) {
+        const hashValue = document.getElementById('hash-value').innerText;
+        const fileContent = CryptoJS.lib.WordArray.create(e.target.result);
+        const fileHashValue = CryptoJS.SHA256(fileContent).toString(CryptoJS.enc.Hex);
+
+        const dropzoneArea = document.getElementById('dropzone-area');
+        const imgHashMatch = document.getElementById('img-hash-match');
+        const imgHashUnmatch = document.getElementById('img-hash-unmatch');
+
+        if (hashValue === fileHashValue) {
+          dropzoneArea.style.display = 'none';
+          imgHashMatch.style.display = 'block';
+        } else {
+          dropzoneArea.style.display = 'none';
+          imgHashUnmatch.style.display = 'block';
+        }
+      });
+
+      function onLoad() {
+        const btnNext = document.getElementById('btn-next');
+        if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+          btnNext.style.display = 'none';
+        } else {
+          btnNext.style.display = 'block';
+        }
+        const divStep2 = document.getElementById('div-step-2');
+        divStep2.style.display = 'none';
+      }
+
+      function onNext() {
+        const divStep1 = document.getElementById('div-step-1');
+        const divStep2 = document.getElementById('div-step-2');
+        divStep1.style.display = 'none';
+        divStep2.style.display = 'flex';
+
+        const dropzoneArea = document.getElementById('dropzone-area');
+        const imgHashMatch = document.getElementById('img-hash-match');
+        const imgHashUnmatch = document.getElementById('img-hash-unmatch');
+        dropzoneArea.style.display = 'block';
+        imgHashMatch.style.display = 'none';
+        imgHashUnmatch.style.display = 'none';
+      }
+
+      function onBack() {
+        const divStep1 = document.getElementById('div-step-1');
+        const divStep2 = document.getElementById('div-step-2');
+        divStep1.style.display = 'flex';
+        divStep2.style.display = 'none';
+      }
+    </script>
   </head>
-  <body class="main">
-    <img class="logo" src="../../logo.png" alt="Integra" />
-    <img class="image" src="../../authenticated.png" alt="Authenticated" />
-    <table class="info">
-      <tbody>
-        <tr>
-          <td class="label">Integra ID:</td>
-          <td class="value"><%= identityId %></td>
-        </tr>
-        <tr>
-          <td class="label">Document Hash:</td>
-          <td class="value"><%= value %></td>
-        </tr>
-        <tr>
-          <td class="label">MetaData:</td>
-          <td class="value"><%= metaData %></td>
-        </tr>
-        <tr>
-          <td class="label">CreationDate:</td>
-          <td class="value"><%= creationDate %></td>
-        </tr>
-      </tbody>
-    </table>
+  <body onload="onLoad()">
+    <div id="div-step-1" class="step">
+      <img class="logo" src="../../logo.png" alt="Integra" />
+      <img class="image" src="../../authenticated.png" alt="Authenticated" />
+      <table class="info">
+        <tbody>
+          <tr>
+            <td class="label">Integra ID:</td>
+            <td class="value"><%= identityId %></td>
+          </tr>
+          <tr>
+            <td class="label">Document Hash:</td>
+            <td id="hash-value" class="value"><%= value %></td>
+          </tr>
+          <tr>
+            <td class="label">MetaData:</td>
+            <td class="value"><%= metaData %></td>
+          </tr>
+          <tr>
+            <td class="label">CreationDate:</td>
+            <td class="value"><%= creationDate %></td>
+          </tr>
+        </tbody>
+      </table>
+      <button id="btn-next" class="btn-next" onclick="onNext()">Next</button>
+    </div>
+    <div id="div-step-2" class="step">
+      <img class="logo" src="../../logo.png" alt="Integra" />
+      <img id="img-hash-match" class="image" src="../../authenticated.png" alt="Authenticated" />
+      <img id="img-hash-unmatch" class="image" src="../../unauthenticated.png" alt="Unauthenticated" />
+      <div class="dropzone-area" id="dropzone-area">
+        <form id="file-dropzone" action="/" class="dropzone"></form>
+      </div>
+      <button id="btn-back" class="btn-back" onclick="onBack()">Back</button>
+    </div>
   </body>
 </html>
 <style>
-  .main {
+  .step {
     margin-top: 50px;
     display: flex;
     flex-direction: column;
@@ -48,5 +127,20 @@
   .value {
     text-align: left;
     padding-left: 5px;
+  }
+  .btn-next,
+  .btn-back {
+    width: 100px;
+    height: 40px;
+    outline: none;
+    font-size: 18px;
+    margin-top: 20px;
+  }
+  .dropzone-area {
+    margin-top: 50px;
+  }
+  #file-dropzone {
+    width: 500px;
+    height: 350px;
   }
 </style>

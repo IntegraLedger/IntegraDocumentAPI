@@ -254,7 +254,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
           identityId: responseJson.data[0].Record.identityId,
           value: responseJson.data[0].Record.value,
           metaData: responseJson.data[0].Record.metaData,
-          creationDate: moment(responseJson.data[0].Record.creationDate).format('LLL')
+          creationDate: moment(responseJson.data[0].Record.creationDate).format('LLL'),
         })
       } else {
         res.render('failure')
@@ -268,6 +268,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
 })
 
 const port = process.env.PORT || 3000
+
 app.listen(port, () => {
   console.log('Listening on port ' + port + '!')
 })
