@@ -11,6 +11,7 @@
         maxFiles: 1,
         uploadMultiple: false,
         acceptedFiles: '.pdf,.docx',
+        dictDefaultMessage: '<h3>Drop file here or click to upload.</h3><br/>Upload proper document to check if it matches the hash code.',
         init: function() {
           this.on('addedfile', function(file) {
             this.removeFile(file);
@@ -27,13 +28,17 @@
         const dropzoneArea = document.getElementById('dropzone-area');
         const imgHashMatch = document.getElementById('img-hash-match');
         const imgHashUnmatch = document.getElementById('img-hash-unmatch');
+        const textHashMatch = document.getElementById('text-hash-match');
+        const textHashUnmatch = document.getElementById('text-hash-unmatch');
 
         if (hashValue === fileHashValue) {
           dropzoneArea.style.display = 'none';
           imgHashMatch.style.display = 'block';
+          textHashMatch.style.display = 'block';
         } else {
           dropzoneArea.style.display = 'none';
           imgHashUnmatch.style.display = 'block';
+          textHashUnmatch.style.display = 'block';
         }
       });
 
@@ -56,10 +61,14 @@
 
         const dropzoneArea = document.getElementById('dropzone-area');
         const imgHashMatch = document.getElementById('img-hash-match');
+        const textHashMatch = document.getElementById('text-hash-match');
         const imgHashUnmatch = document.getElementById('img-hash-unmatch');
+        const textHashUnmatch = document.getElementById('text-hash-unmatch');
         dropzoneArea.style.display = 'block';
         imgHashMatch.style.display = 'none';
+        textHashMatch.style.display = 'none';
         imgHashUnmatch.style.display = 'none';
+        textHashUnmatch.style.display = 'none';
       }
 
       function onBack() {
@@ -98,7 +107,9 @@
     </div>
     <div id="div-step-2" class="step">
       <img class="logo" src="../../logo.png" alt="Integra" />
+      <p id="text-hash-match">Document you provided matches the hash code.</p>
       <img id="img-hash-match" class="image" src="../../authenticated.png" alt="Authenticated" />
+      <p id="text-hash-unmatch">Document you provided doesn't match the hash code.</p>
       <img id="img-hash-unmatch" class="image" src="../../unauthenticated.png" alt="Unauthenticated" />
       <div class="dropzone-area" id="dropzone-area">
         <form id="file-dropzone" action="/" class="dropzone"></form>
@@ -141,6 +152,6 @@
   }
   #file-dropzone {
     width: 500px;
-    height: 350px;
+    height: 250px;
   }
 </style>
