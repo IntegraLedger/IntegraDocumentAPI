@@ -17,6 +17,7 @@ const Docxtemplater = require('docxtemplater')
 const libre = require('libreoffice-convert')
 const libreConvertAsync = promisify(libre.convert)
 const mongoose = require('mongoose')
+const bodyParser = require('body-parser');
 const Schema = mongoose.Schema
 const QRSchema = new Schema({
   guid: String,
@@ -27,6 +28,8 @@ const uuidv1 = require('uuid/v1')
 const moment = require('moment')
 const app = express()
 app.use(cors())
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('public'))
 app.set('views', __dirname + '/views')
 app.set('view engine', 'ejs');
@@ -44,6 +47,9 @@ mongoose.connect(uri, {
   .catch(err => {
     console.log('Error: Unable to connect to db. ' + err)
   })
+
+var api_routes = require('./routes/api/index');
+app.use('/api', api_routes);
 
 app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
@@ -105,7 +111,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       .digest('hex')
     const response = await fetch('https://integraledger.azure-api.net/api/v1.4/registerIdentity', {
         method: 'post',
-        body: JSON.stringify({  
+        body: JSON.stringify({
           'identityType': 'com.integraledger.lmatid',
           'metaData': 'esign by mike',
           'value': encryptedData,
@@ -124,7 +130,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     instance.guid = guid
     instance.hash = encryptedData
     instance.save()
-    
+
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name')
     res.setHeader('file-name', fileName)
@@ -144,12 +150,12 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     const content = fs.readFileSync(req.file.path, 'binary')
     const zip = new PizZip(content)
     const doc = new Docxtemplater()
-    
+
     doc.loadZip(zip)
     doc.setData(meta)
     doc.render()
     const docData = doc.getZip().generate({ type: 'nodebuffer' })
-    
+
     // Convert word document to pdf
     const pdfData = await libreConvertAsync(docData, '.pdf', undefined)
     fs.writeFileSync(req.file.path, pdfData)
@@ -159,7 +165,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
       modifiedFilePath: 'modified/' + req.file.filename
     })
     const reader = hummus.createReader(req.file.path)
-    
+
     // Add meta data
     const infoDictionary = writer.getDocumentContext().getInfoDictionary()
     for (const key of Object.keys(meta)) {
@@ -194,11 +200,11 @@ app.post('/doc', upload.single('file'), async (req, res) => {
       .attachURLLinktoCurrentPage('https://integraapi.azurewebsites.net/QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
       .endContext().writePage()
     writer.end()
-    
+
     // Generate file name (Attach 'SmartDoc' to original filename)
     const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
     await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
-    
+
     // SHA-256 hash file
     const fileData = await readFileAsync('modified/' + fileName)
     const encryptedData = crypto.createHash('sha256')
@@ -206,7 +212,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
       .digest('hex')
     const response = await fetch('https://integraledger.azure-api.net/api/v1.4/registerIdentity', {
         method: 'post',
-        body: JSON.stringify({  
+        body: JSON.stringify({
           'identityType': 'com.integraledger.lmatid',
           'metaData': '',
           'value': encryptedData,
