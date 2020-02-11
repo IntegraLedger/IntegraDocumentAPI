@@ -16,6 +16,7 @@
     "ejs": "^3.0.1",
     "express": "^4.17.1",
     "hummus": "^1.0.108",
+    "hummus-recipe": "^1.9.2",
     "libreoffice-convert": "^1.0.4",
     "lodash": "^4.17.15",
     "moment": "^2.24.0",

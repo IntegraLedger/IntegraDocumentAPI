@@ -10,6 +10,7 @@ const readFileAsync = promisify(fs.readFile)
 // const writeFileAsync = promisify(fs.writeFile)
 const multer  = require('multer')
 const upload = multer({ dest: 'uploads/' })
+const HummusRecipe = require('hummus-recipe')
 const hummus = require('hummus'),
   fillForm = require('./pdf-form-fill').fillForm
 const PizZip = require('pizzip')
@@ -51,10 +52,39 @@ mongoose.connect(uri, {
 var api_routes = require('./routes/api/index');
 app.use('/api', api_routes);
 
+app.post('/analyze', upload.single('file'), async (req, res) => {
+  try {
+    const fileData = await readFileAsync(req.file.path)
+    const encryptedData = crypto.createHash('sha256')
+      .update(fileData)
+      .digest('hex')
+    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/valueexists/' + encryptedData, {
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+      },
+    })
+    const responseJson = await response.json()
+    if (responseJson.exists) {
+      const pdfDoc = new HummusRecipe(req.file.path);
+      const info = pdfDoc.info();
+      res.send({result: info})
+    } else {
+      res.send({result: false})
+    }
+
+  } catch (err) {
+    res.send(err)
+  }
+})
+
 app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
     const meta = Object.assign({}, req.body)
     delete meta.subscription_key
+    const data_form = meta.data_form;
+    delete meta.data_form;
 
     // Create pdf writer
     const writer = hummus.createWriterToModify(req.file.path, {
@@ -68,6 +98,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       infoDictionary.addAdditionalInfoEntry(key, meta[key])
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
+    infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
 
     // Fill form fields
     fillForm(writer, meta)
@@ -145,6 +176,8 @@ app.post('/doc', upload.single('file'), async (req, res) => {
   try {
     const meta = Object.assign({}, req.body)
     delete meta.subscription_key
+    const data_form = meta.data_form;
+    delete meta.data_form;
 
     // Fill merge fields
     const content = fs.readFileSync(req.file.path, 'binary')
@@ -172,6 +205,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
       infoDictionary.addAdditionalInfoEntry(key, meta[key])
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
+    infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
 
     // Add QR Code into first page
     const guid = uuidv1()
