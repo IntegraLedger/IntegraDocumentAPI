@@ -105,7 +105,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
     // Add QR Code into first page
     const guid = uuidv1()
-    await QRCode.toFile('qr.png', guid)
+    await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
@@ -209,7 +209,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
 
     // Add QR Code into first page
     const guid = uuidv1()
-    await QRCode.toFile('qr.png', guid)
+    await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
