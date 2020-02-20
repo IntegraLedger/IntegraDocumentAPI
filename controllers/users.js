@@ -26,15 +26,19 @@ exports.signup = (req, res) => {
           });
 
           newUser.save();
+          const info = {
+            id: newUser._id,
+            email: newUser.email,
+            first_name: newUser.first_name,
+            last_name: newUser.last_name
+          }
+          const token = jwt.sign(info, config.secret, { expiresIn: config.expiresIn})
+
           res.json({
             succeed: true,
             message: 'User Registered Successfully!',
-            user: {
-              id: newUser._id,
-              email: newUser.email,
-              first_name: newUser.first_name,
-              last_name: newUser.last_name
-            }
+            user: info,
+            token
           });
         } else {
           res.json({ message: 'User Already Registered!'});
