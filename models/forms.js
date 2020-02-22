@@ -4,7 +4,8 @@ const Schema = mongoose.Schema;
 
 const FormsSchema = new Schema({
     name: { type: String, isRequired: true },
-    content : []
+    content : [],
+    user_id  : { type: mongoose.Schema.Types.ObjectId, isRequired: true, ref: 'users' },
 });
 
 module.exports = mongoose.model('forms', FormsSchema);

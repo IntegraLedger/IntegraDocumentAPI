@@ -4,6 +4,6 @@ var forms = require('../../controllers/forms');
 var VerifyToken = require('./VerifyToken');
 
 router.post('/save', VerifyToken, forms.save);
-router.get('/get', VerifyToken, forms.getForms);
+router.get('/get/:user_id', VerifyToken, forms.getForms);
 
 module.exports = router;

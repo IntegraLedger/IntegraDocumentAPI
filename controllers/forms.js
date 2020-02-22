@@ -1,18 +1,21 @@
 const forms = require('../models/forms');
 
 exports.save = (req, res) => {
-    const { name, content } = req.body;
+    const { name, content, user_id } = req.body;
 
     const newForms = new forms({
         name,
-        content
+        content,
+        user_id
     });
     newForms.save();
     res.status(200).json({ succeed: true, message: "Successfully saved form!" });
 }
 
 exports.getForms = (req, res) => {
-    forms.find({})
+    const { user_id } = req.params;
+
+    forms.find({user_id})
         .then(forms => {
             res.status(200).json({ succeed: true, list: forms });
         })
