@@ -118,7 +118,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
         fit: 'always'
       }
     })
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, 'integra-qr.png', {
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, 'hoganLovells-qr.jpg', {
       transformation: {
         width: 30,
         height: 30,
@@ -222,7 +222,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
         fit: 'always'
       }
     })
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, 'integra-qr.png', {
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, 'hoganLovells-qr.jpg', {
       transformation: {
         width: 30,
         height: 30,
