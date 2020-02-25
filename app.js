@@ -105,7 +105,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
     // Add QR Code into first page
     const guid = uuidv1()
-    await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
+    await QRCode.toFile('qr.png', 'https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
@@ -127,7 +127,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     })
     pageModifier.endContext().writePage()
     pageModifier
-      .attachURLLinktoCurrentPage('https://integraapi.azurewebsites.net/QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .attachURLLinktoCurrentPage('https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
       .endContext().writePage()
     writer.end()
 
@@ -209,7 +209,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
 
     // Add QR Code into first page
     const guid = uuidv1()
-    await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
+    await QRCode.toFile('qr.png', 'https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
@@ -231,7 +231,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     })
     pageModifier.endContext().writePage()
     pageModifier
-      .attachURLLinktoCurrentPage('https://integraapi.azurewebsites.net/QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .attachURLLinktoCurrentPage('https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
       .endContext().writePage()
     writer.end()
 
