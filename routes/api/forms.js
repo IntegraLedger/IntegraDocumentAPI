@@ -1,9 +1,9 @@
 var express = require('express');
 var router = express.Router();
 var forms = require('../../controllers/forms');
-var VerifyToken = require('./VerifyToken');
+var verifyToken = require('./verifyToken');
 
-router.post('/save', VerifyToken, forms.save);
-router.get('/get/:user_id', VerifyToken, forms.getForms);
+router.post('/save', verifyToken, forms.save);
+router.get('/get/:user_id', verifyToken, forms.getForms);
 
 module.exports = router;
