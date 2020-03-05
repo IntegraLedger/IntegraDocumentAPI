@@ -83,8 +83,12 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
     const meta = Object.assign({}, req.body)
     delete meta.subscription_key
+
     const data_form = meta.data_form;
     delete meta.data_form;
+
+    const master_id = meta.master_id
+    delete meta.master_id
 
     // Create pdf writer
     const writer = hummus.createWriterToModify(req.file.path, {
@@ -99,12 +103,15 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
     infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
+    const guid = uuidv1()
+    infoDictionary.addAdditionalInfoEntry('id', guid)
+    if (master_id)
+      infoDictionary.addAdditionalInfoEntry('master_id', master_id)
 
     // Fill form fields
     fillForm(writer, meta)
 
     // Add QR Code into first page
-    const guid = uuidv1()
     await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
@@ -179,6 +186,9 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     const data_form = meta.data_form;
     delete meta.data_form;
 
+    const master_id = meta.master_id
+    delete meta.master_id
+
     // Fill merge fields
     const content = fs.readFileSync(req.file.path, 'binary')
     const zip = new PizZip(content)
@@ -206,9 +216,12 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
     infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
+    const guid = uuidv1()
+    infoDictionary.addAdditionalInfoEntry('id', guid)
+    if (master_id)
+      infoDictionary.addAdditionalInfoEntry('master_id', master_id)
 
     // Add QR Code into first page
-    const guid = uuidv1()
     await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
