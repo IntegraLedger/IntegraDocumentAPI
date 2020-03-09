@@ -23,3 +23,20 @@ exports.getForms = (req, res) => {
             res.status(500).json(err);
         })
 }
+
+exports.deleteForm = (req, res) => {
+    const { form_id } = req.params;
+
+    forms.findById(form_id)
+        .then(form => {
+            form.remove();
+            if (req.user._id == form.user_id) {
+                res.status(200).json({ succeed: true, message: 'Successfully deleted form!' });
+            } else {
+                res.status(200).json({ succeed: false, message: 'You are trying to delete unauthorized form!' });
+            }
+        })
+        .catch((err) => {
+            res.status(500).json(err);
+        })
+}
