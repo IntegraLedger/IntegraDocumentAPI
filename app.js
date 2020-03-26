@@ -170,8 +170,10 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     instance.save()
 
     // Attach file name to response header
-    res.setHeader('Access-Control-Expose-Headers', 'file-name')
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
     res.setHeader('file-name', fileName)
+    res.setHeader('id', guid)
+    res.setHeader('hash', encryptedData)
 
     res.download('modified/' + fileName, fileName)
   } catch (err) {
@@ -280,8 +282,10 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     instance.save()
 
     // Attach file name to response header
-    res.setHeader('Access-Control-Expose-Headers', 'file-name')
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
     res.setHeader('file-name', fileName)
+    res.setHeader('id', guid)
+    res.setHeader('hash', encryptedData)
 
     res.download('modified/' + fileName, fileName)
   } catch (err) {
