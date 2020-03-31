@@ -125,7 +125,15 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
         fit: 'always'
       }
     })
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, 'integra-qr.png', {
+
+    if (meta.organization_logo) {
+      const base64Data = meta.organization_logo.split(',')[1]
+      await fs.writeFileSync("qr-logo.png", base64Data, {
+        encoding: "base64"
+      });
+    }
+
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
       transformation: {
         width: 30,
         height: 30,
@@ -237,7 +245,15 @@ app.post('/doc', upload.single('file'), async (req, res) => {
         fit: 'always'
       }
     })
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, 'integra-qr.png', {
+
+    if (meta.organization_logo) {
+      const base64Data = meta.organization_logo.split(',')[1]
+      await fs.writeFileSync("qr-logo.png", base64Data, {
+        encoding: "base64"
+      });
+    }
+
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
       transformation: {
         width: 30,
         height: 30,
