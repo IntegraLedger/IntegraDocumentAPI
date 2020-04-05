@@ -83,6 +83,9 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
     const meta = Object.assign({}, req.body)
     delete meta.subscription_key
+    const cartridgeType = meta.cartridge_type
+    delete meta.cartridge_type
+    if (!req.file) delete meta.file
 
     const data_form = meta.data_form;
     delete meta.data_form;
@@ -91,11 +94,10 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     delete meta.master_id
 
     // Create pdf writer
-    const writer = hummus.createWriterToModify(req.file.path, {
-      modifiedFilePath: 'modified/' + req.file.filename
+    const writer = hummus.createWriterToModify(req.file ? req.file.path : `./${cartridgeType}.pdf`, {
+      modifiedFilePath: 'modified/' + (req.file ? req.file.filename : `${cartridgeType}.pdf`)
     })
-    const reader = hummus.createReader(req.file.path)
-
+    const reader = hummus.createReader(req.file ? req.file.path : `./${cartridgeType}.pdf`)
     // Add meta data
     const infoDictionary = writer.getDocumentContext().getInfoDictionary()
     for (const key of Object.keys(meta)) {
@@ -126,14 +128,14 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       }
     })
 
-    if (meta.organization_logo) {
+    if (req.file && meta.organization_logo) {
       const base64Data = meta.organization_logo.split(',')[1]
       await fs.writeFileSync("qr-logo.png", base64Data, {
         encoding: "base64"
       });
     }
 
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, req.file && meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
       transformation: {
         width: 30,
         height: 30,
@@ -147,8 +149,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     writer.end()
 
     // Generate file name (Attach 'SmartDoc' to original filename)
-    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
-    await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
+    const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${cartridgeType}.pdf`
+    await renameFileAsync('modified/' + (req.file ? req.file.filename : `${cartridgeType}.pdf`), 'modified/' + fileName)
 
     // SHA-256 hash file
     const fileData = await readFileAsync('modified/' + fileName)
