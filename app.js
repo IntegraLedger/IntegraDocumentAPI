@@ -149,7 +149,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     writer.end()
 
     // Generate file name (Attach 'SmartDoc' to original filename)
-    const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${cartridgeType}.pdf`
+    const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${cartridgeType}_Cartridge.pdf`
     await renameFileAsync('modified/' + (req.file ? req.file.filename : `${cartridgeType}.pdf`), 'modified/' + fileName)
 
     // SHA-256 hash file
