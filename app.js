@@ -69,7 +69,7 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
       const info = pdfDoc.info();
-      res.send({result: info})
+      res.send({result: info, creationDate: responseJson.data[0].Record.creationDate})
     } else {
       res.send({result: false})
     }
