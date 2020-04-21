@@ -191,9 +191,10 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     res.setHeader('hash', encryptedData)
 
     res.download('modified/' + fileName, fileName)
-    fs.unlink(req.file.path, (err) => {
-      if (err) console.log(err)
-    })
+    if (req.file)
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.log(err)
+      })
   } catch (err) {
     res.send(err)
   }
