@@ -66,13 +66,18 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
       },
     })
     const responseJson = await response.json()
+    let result = {}
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
       const info = pdfDoc.info();
-      res.send({result: info, creationDate: responseJson.data[0].Record.creationDate})
+      result = {result: info, creationDate: responseJson.data[0].Record.creationDate}
     } else {
-      res.send({result: false})
+      result = {result: false}
     }
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.log(err)
+    })
+    res.send(result)
 
   } catch (err) {
     res.send(err)
@@ -186,6 +191,9 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     res.setHeader('hash', encryptedData)
 
     res.download('modified/' + fileName, fileName)
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.log(err)
+    })
   } catch (err) {
     res.send(err)
   }
@@ -306,6 +314,9 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     res.setHeader('hash', encryptedData)
 
     res.download('modified/' + fileName, fileName)
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.log(err)
+    })
   } catch (err) {
     console.log('err')
     res.send(err)
