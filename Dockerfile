@@ -1,4 +1,4 @@
-FROM node:10
+FROM node:11
 
 RUN apt update -y
 RUN apt install -y libreoffice

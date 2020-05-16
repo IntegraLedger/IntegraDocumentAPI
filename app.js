@@ -52,6 +52,14 @@ mongoose.connect(uri, {
 var api_routes = require('./routes/api/index');
 app.use('/api', api_routes);
 
+const encryptStringWithRsaPrivateKey = function(toEncrypt, privateKey) {
+  const sign = crypto.createSign('SHA256');
+  sign.update(toEncrypt);
+  sign.end();
+  const signature = sign.sign(privateKey);
+  return signature.toString("base64");
+};
+
 app.post('/analyze', upload.single('file'), async (req, res) => {
   try {
     const fileData = await readFileAsync(req.file.path)
@@ -90,6 +98,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     delete meta.subscription_key
     const cartridgeType = meta.cartridge_type
     delete meta.cartridge_type
+    const pass_phrase = meta.pass_phrase
+    delete meta.pass_phrase
     if (!req.file) delete meta.file
 
     const data_form = meta.data_form;
@@ -114,7 +124,22 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     infoDictionary.addAdditionalInfoEntry('id', guid)
     if (master_id)
       infoDictionary.addAdditionalInfoEntry('master_id', master_id)
+    if (cartridgeType && cartridgeType === 'Personal') {
+      const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 4096,
+      });
+      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
 
+      const registerKeyRes = await fetch(`http://13.58.201.212:3011/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+      })
+      // const json = await registerKeyRes.json()
+      const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey)
+      infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted)
+    }
     // Fill form fields
     fillForm(writer, meta)
 
