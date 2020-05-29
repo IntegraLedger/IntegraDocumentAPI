@@ -3,6 +3,7 @@ const QRCode = require('qrcode')
 const cors = require('cors')
 const fetch = require('node-fetch')
 const crypto = require('crypto')
+const algorithm = 'aes-256-cbc';
 const fs = require('fs')
 const { promisify } = require('util')
 const renameFileAsync = promisify(fs.rename)
@@ -211,7 +212,17 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
-    res.setHeader('file-name', fileName)
+    let finalFileName;
+    if (req.file) finalFileName = fileName;
+    else {
+      if (cartridgeType === 'Organization')
+        finalFileName = `${meta.organization_name} Key.pdf`;
+      else if (cartridgeType === 'Personal')
+        finalFileName = `${meta.given_name} ${meta.family_name} Key.pdf`;
+      else if (cartridgeType === 'Encrypt')
+        finalFileName = `Encrypt.pdf`;
+    }
+    res.setHeader('file-name', finalFileName)
     res.setHeader('id', guid)
     res.setHeader('hash', encryptedData)
 
@@ -374,6 +385,103 @@ app.get('/QRVerify/:guid', async (req, res) => {
     } else {
       res.render('failure')
     }
+  } catch (err) {
+    res.send(err)
+  }
+})
+
+app.get('/publicKey/:id', async (req, res) => {
+  try {
+    const response = await fetch('http://13.58.201.212:3011/keyforowner/' + req.params.id, {
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+      },
+    });
+    const responseJson = await response.json();
+    if (responseJson.exists) {
+      res.status(200).json({
+        exists: true,
+        publicKey: responseJson.data[0].Record.keyValue
+      });
+    } else {
+      res.status(200).json({
+        exists: false,
+      });
+    }
+  } catch (err) {
+    res.status(500).json(err);
+  }
+})
+
+const encrypt = (text) => {
+  const key = crypto.randomBytes(32);
+  const iv = crypto.randomBytes(16);
+  let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return { key, iv, encryptedData: encrypted.toString('hex') };
+}
+const decrypt = (text) => {
+  let iv = Buffer.from(text.iv, 'hex');
+  let encryptedText = Buffer.from(text.encryptedData, 'hex');
+  let decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
+
+const encryptWithRsaPublicKey = function(filePath, publicKey) {
+  var toEncrypt = fs.readFileSync(filePath, "utf8");
+  var buffer = Buffer.from(toEncrypt);
+  try {
+    const pkhead = "-----BEGIN RSA PUBLIC KEY-----";
+    const pkfooter = "-----END RSA PUBLIC KEY-----";
+
+    let pubkey = publicKey.replace(/\\n/g, '\n') // Incoming public key
+    let fmt = "der";
+    if (pubkey.includes(pkhead)) {
+      fmt = "pem";
+    }
+    pubkey = pubkey.replace(pkhead, "");
+    pubkey = pubkey.replace(pkfooter, "pkfooter");
+    pubkey = pubkey.split(" ").join("+");
+    pubkey = pubkey.replace("pkfooter", pkfooter);
+    pubkey = pkhead + pubkey;
+    let keyData = {
+      key: pubkey,
+      format: fmt,
+      padding: crypto.constants.RSA_NO_PADDING
+    };
+    if (fmt === "der") keyData.type = "pkcs1";
+    const key = crypto.createPublicKey(keyData);
+
+    const enc = encrypt(buffer);
+    const AESEncryptedDoc = enc.encryptedData;
+    const RSAEncryptedKey = crypto.publicEncrypt(key, enc.key);
+    const RSAEncryptedIv = crypto.publicEncrypt(key, enc.iv);
+    return {
+      AESEncryptedDoc,
+      RSAEncryptedKey: RSAEncryptedKey.toString("base64"),
+      RSAEncryptedIv: RSAEncryptedIv.toString("base64")
+    };
+
+  } catch( e ) {
+    console.log(e)
+  }
+};
+
+app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
+  try {
+    const { publicKey } = req.body;
+    const encrypted = encryptWithRsaPublicKey(req.file.path, publicKey)
+    res.send(encrypted)
+
+    if (req.file)
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.log(err)
+      })
   } catch (err) {
     res.send(err)
   }
