@@ -108,12 +108,20 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
     const master_id = meta.master_id
     delete meta.master_id
+    let readingFileName = cartridgeType;
+
+    const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
+    if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
+      readingFileName = 'Personal_Private';
+      if (req.query.private_id)
+        readingFileName = 'Personal_Public';
+    }
 
     // Create pdf writer
-    const writer = hummus.createWriterToModify(req.file ? req.file.path : `./${cartridgeType}.pdf`, {
-      modifiedFilePath: 'modified/' + (req.file ? req.file.filename : `${cartridgeType}.pdf`)
+    const writer = hummus.createWriterToModify(req.file ? req.file.path : `./${readingFileName}.pdf`, {
+      modifiedFilePath: 'modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`)
     })
-    const reader = hummus.createReader(req.file ? req.file.path : `./${cartridgeType}.pdf`)
+    const reader = hummus.createReader(req.file ? req.file.path : `./${readingFileName}.pdf`)
     // Add meta data
     const infoDictionary = writer.getDocumentContext().getInfoDictionary()
     for (const key of Object.keys(meta)) {
@@ -121,15 +129,16 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
     infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
-    const guid = uuidv1()
+    const guid = !isHedgePublic ? uuidv1() : req.query.private_id
     infoDictionary.addAdditionalInfoEntry('id', guid)
     if (master_id)
       infoDictionary.addAdditionalInfoEntry('master_id', master_id)
-    if (cartridgeType && cartridgeType === 'Personal') {
+    if (cartridgeType && cartridgeType === 'Personal' && !isHedgePublic) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
       const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
+      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
 
       const registerKeyRes = await fetch(`http://13.58.201.212:3011/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
           method: 'post',
@@ -140,6 +149,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       // const json = await registerKeyRes.json()
       const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey)
       infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted)
+      infoDictionary.addAdditionalInfoEntry('private_key', privkeyString)
     }
     // Fill form fields
     fillForm(writer, meta)
@@ -180,8 +190,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     writer.end()
 
     // Generate file name (Attach 'SmartDoc' to original filename)
-    const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${cartridgeType}_Cartridge.pdf`
-    await renameFileAsync('modified/' + (req.file ? req.file.filename : `${cartridgeType}.pdf`), 'modified/' + fileName)
+    const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${readingFileName}_Cartridge.pdf`
+    await renameFileAsync('modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`), 'modified/' + fileName)
 
     // SHA-256 hash file
     const fileData = await readFileAsync('modified/' + fileName)
@@ -204,11 +214,13 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     // console.log(encryptedData)
     // console.log(await response.json())
 
-    // Store GUID and Hash to MongoDB
-    const instance = new QRModel()
-    instance.guid = guid
-    instance.hash = encryptedData
-    instance.save()
+    if (!isHedgePublic) {
+      // Store GUID and Hash to MongoDB
+      const instance = new QRModel()
+      instance.guid = guid
+      instance.hash = encryptedData
+      instance.save()
+    }
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
@@ -221,10 +233,15 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
         finalFileName = `${meta.given_name} ${meta.family_name} Key.pdf`;
       else if (cartridgeType === 'Encrypt')
         finalFileName = `Encrypt.pdf`;
+
+      if (req.query.type === 'hedgefund')
+        finalFileName = `${readingFileName}.pdf`
     }
     res.setHeader('file-name', finalFileName)
     res.setHeader('id', guid)
-    res.setHeader('hash', encryptedData)
+    if (!isHedgePublic) {
+      res.setHeader('hash', encryptedData)
+    }
 
     res.download('modified/' + fileName, fileName)
     if (req.file)
@@ -415,6 +432,44 @@ app.get('/publicKey/:id', async (req, res) => {
   }
 })
 
+app.post('/verifyKey/:key', async (req, res) => {
+  try {
+    const key = req.params.key;
+    const { public_key, encrypted_passphrase } = req.body;
+
+    const pkhead = "-----BEGIN RSA PUBLIC KEY-----";
+    const pkfooter = "-----END RSA PUBLIC KEY-----";
+
+    let pubkey = public_key.replace(/\\n/g, '\n') // Incoming public key
+    let fmt = "der";
+    if (pubkey.includes(pkhead)) {
+      fmt = "pem";
+    }
+    pubkey = pubkey.replace(pkhead, "");
+    pubkey = pubkey.replace(pkfooter, "pkfooter");
+    pubkey = pubkey.split(" ").join("+");
+    pubkey = pubkey.replace("pkfooter", pkfooter);
+    pubkey = pkhead + pubkey;
+    let keyData = {
+      key: pubkey,
+      format: fmt,
+      padding: crypto.constants.RSA_NO_PADDING
+    };
+    if (fmt === "der") keyData.type = "pkcs1";
+    const pubKey = crypto.createPublicKey(keyData);
+
+    const verify = crypto.createVerify('SHA256');
+    verify.write(key);
+    verify.end();
+    const result = verify.verify(pubKey, Buffer.from(encrypted_passphrase, 'base64'));
+    res.status(200).json({
+      success: result
+    })
+  } catch (err) {
+    res.status(500).json(err);
+  }
+})
+
 const encrypt = (text) => {
   const key = crypto.randomBytes(32);
   const iv = crypto.randomBytes(16);
@@ -426,14 +481,14 @@ const encrypt = (text) => {
 const decrypt = (text) => {
   let iv = Buffer.from(text.iv, 'hex');
   let encryptedText = Buffer.from(text.encryptedData, 'hex');
-  let decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
+  let decipher = crypto.createDecipheriv(algorithm, Buffer.from(text.key), iv);
   let decrypted = decipher.update(encryptedText);
   decrypted = Buffer.concat([decrypted, decipher.final()]);
   return decrypted.toString();
 }
 
 const encryptWithRsaPublicKey = function(filePath, publicKey) {
-  var toEncrypt = fs.readFileSync(filePath, "utf8");
+  var toEncrypt = fs.readFileSync(filePath, "binary");
   var buffer = Buffer.from(toEncrypt);
   try {
     const pkhead = "-----BEGIN RSA PUBLIC KEY-----";
@@ -483,6 +538,49 @@ app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
         if (err) console.log(err)
       })
   } catch (err) {
+    res.send(err)
+  }
+})
+
+app.post('/decryptWithPrivateKey', upload.single('file'), async (req, res) => {
+  try {
+    const { data, privateKey } = req.body;
+    const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey } = JSON.parse(data)
+
+    const pkhead = "-----BEGIN RSA PRIVATE KEY-----";
+    const pkfooter = "-----END RSA PRIVATE KEY-----";
+
+    let privkey = privateKey.replace(/\\n/g, '\n') // Incoming public key
+    let fmt = "der";
+    if (privkey.includes(pkhead)) {
+      fmt = "pem";
+    }
+    privkey = privkey.replace(pkhead, "");
+    privkey = privkey.replace(pkfooter, "pkfooter");
+    privkey = privkey.split(" ").join("+");
+    privkey = privkey.replace("pkfooter", pkfooter);
+    privkey = pkhead + privkey;
+    let keyData = {
+      key: privkey,
+      format: fmt,
+      padding: crypto.constants.RSA_NO_PADDING
+    };
+    if (fmt === "der") keyData.type = "pkcs1";
+    const key = crypto.createPrivateKey(keyData);
+
+    const aes_iv = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedIV, 'base64'));
+    const aes_key = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedKey, 'base64'));
+    const dec = decrypt({ encryptedData: AESEncryptedDoc, iv: aes_iv, key: aes_key });
+    fs.writeFileSync('modified/decrypt.pdf', dec, 'binary')
+
+    res.download('modified/decrypt.pdf', 'decrypt.pdf')
+
+    // if (req.file)
+    //   fs.unlink(req.file.path, (err) => {
+    //     if (err) console.log(err)
+    //   })
+  } catch (err) {
+    console.log(err)
     res.send(err)
   }
 })
