@@ -10,7 +10,10 @@ const renameFileAsync = promisify(fs.rename)
 const readFileAsync = promisify(fs.readFile)
 // const writeFileAsync = promisify(fs.writeFile)
 const multer  = require('multer')
-const upload = multer({ dest: 'uploads/' })
+const upload = multer({
+  dest: 'uploads/',
+  limits: { fieldSize: 25 * 1024 * 1024 }
+})
 const HummusRecipe = require('hummus-recipe')
 const hummus = require('hummus'),
   fillForm = require('./pdf-form-fill').fillForm
@@ -234,7 +237,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       else if (cartridgeType === 'Encrypt')
         finalFileName = `Encrypt.pdf`;
 
-      if (req.query.type === 'hedgefund')
+      if (req.query.type === 'hedgefund' && cartridgeType === 'Personal')
         finalFileName = `${readingFileName}.pdf`
     }
     res.setHeader('file-name', finalFileName)
