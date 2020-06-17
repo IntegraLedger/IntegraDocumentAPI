@@ -2,3 +2,9 @@ modified
 uploads
 node_modules
 qr.png
+
+# local env files
+.env
+.env.*
+.env.local
+.env.*.local

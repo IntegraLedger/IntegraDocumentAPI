@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express')
 const QRCode = require('qrcode')
 const cors = require('cors')
@@ -31,6 +32,8 @@ const QRSchema = new Schema({
 const QRModel = mongoose.model('QR', QRSchema);
 const uuidv1 = require('uuid/v1')
 const moment = require('moment')
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const app = express()
 app.use(cors())
 app.use(bodyParser.json());
@@ -584,6 +587,43 @@ app.post('/decryptWithPrivateKey', upload.single('file'), async (req, res) => {
     //   })
   } catch (err) {
     console.log(err)
+    res.send(err)
+  }
+})
+
+app.post('/email', upload.single('file'), async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    const attachment = fs.readFileSync(req.file.path).toString("base64");
+    const msg = {
+      to: email,
+      from: 'no-reply@integraledger.com',
+      subject: 'New Subscription Agreement Document',
+      html: `Hi ${name},<br>
+<br>
+A new subscription agreement document has been generated using the Integra Hedge Fund Application.  The attached document has been encrypted for security of the information contained within the document.<br>
+<br>
+To decrypt the document, please go to https://hedgefund.z20.web.core.windows.net/, click "Individual", then click on "Decrypt a Document".  In order to decrypt this document make sure to have your private key attesation document available.<br>
+<br>
+Thanks,<br>
+David`,
+      attachments: [
+        {
+          content: attachment,
+          filename: "SubscriptionAgreement_Encrypted.pdf",
+          type: "application/pdf",
+          disposition: "attachment"
+        }
+      ]
+    };
+
+    await sgMail.send(msg)
+    res.send({success: true})
+    if (req.file)
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.log(err)
+      })
+  } catch (err) {
     res.send(err)
   }
 })
