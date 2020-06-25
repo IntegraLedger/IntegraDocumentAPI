@@ -158,6 +158,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString)
     }
     // Fill form fields
+    meta.id = guid;
     fillForm(writer, meta)
 
     // Add QR Code into first page
