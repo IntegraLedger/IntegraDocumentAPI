@@ -22,6 +22,11 @@ const PizZip = require('pizzip')
 const Docxtemplater = require('docxtemplater')
 const libre = require('libreoffice-convert')
 const libreConvertAsync = promisify(libre.convert)
+
+var PdfReader = require("pdfreader").PdfReader;
+var filereader = require('./filereader');
+var XLSX = require('xlsx');
+
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser');
 const Schema = mongoose.Schema
@@ -552,7 +557,7 @@ app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
 app.post('/decryptWithPrivateKey', upload.single('file'), async (req, res) => {
   try {
     const { data, privateKey } = req.body;
-    const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey } = JSON.parse(data)
+    const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey, filename } = JSON.parse(data)
 
     const pkhead = "-----BEGIN RSA PRIVATE KEY-----";
     const pkfooter = "-----END RSA PRIVATE KEY-----";
@@ -578,14 +583,17 @@ app.post('/decryptWithPrivateKey', upload.single('file'), async (req, res) => {
     const aes_iv = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedIV, 'base64'));
     const aes_key = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedKey, 'base64'));
     const dec = decrypt({ encryptedData: AESEncryptedDoc, iv: aes_iv, key: aes_key });
-    fs.writeFileSync('modified/decrypt.pdf', dec, 'binary')
+    fs.writeFileSync(`modified/${filename}`, dec, 'binary')
 
-    res.download('modified/decrypt.pdf', 'decrypt.pdf')
+    res.setHeader('Access-Control-Expose-Headers', 'file-name')
+    res.setHeader('file-name', filename)
 
-    // if (req.file)
-    //   fs.unlink(req.file.path, (err) => {
-    //     if (err) console.log(err)
-    //   })
+    res.download(`modified/${filename}`, filename, (err) => {
+      fs.unlink(`modified/${filename}`, (err) => {
+        if (err) console.log(err)
+      })
+    })
+
   } catch (err) {
     console.log(err)
     res.send(err)
@@ -628,6 +636,53 @@ David`,
     res.send(err)
   }
 })
+
+app.post('/readFile', upload.single('file'), (req, res) => {
+  var filecontent = "";
+  fs.readFile(req.file.path, async (err, data) => {
+      let filePath = req.file.path;
+      let filebuffer = data;
+      let filename = req.file.originalname;
+      var fileextension = filereader.getFileExtension(filename);
+      switch (fileextension) {
+        case '.pdf':
+          new PdfReader().parseBuffer(filebuffer, function (err, item) {
+              if (err) console.log(err);
+              else if (!item) console.log(item);
+              else if (item.text) {
+                  filecontent = filecontent + " " + item.text;
+              }
+          });
+          break;
+        case '.doc':
+        case '.docx':
+          const docRes = await filereader.extract(filePath);
+          filecontent = docRes;
+          break;
+        case '.xlsx':
+        case '.xls':
+          var result = {};
+          data = new Uint8Array(data);
+          var workbook = XLSX.read(data, {
+              type: 'array'
+          });
+          workbook.SheetNames.forEach(function (sheetName) {
+              var roa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+                  header: 1
+              });
+              if (roa.length) result[sheetName] = roa;
+          });
+          filecontent = JSON.stringify(result);
+          break;
+        case '.txt' || '.csv':
+          filecontent = data;
+          break;
+        default:
+          filecontent = filename;
+      }
+      res.send(filecontent)
+  });
+});
 
 const port = process.env.PORT || 3000
 
