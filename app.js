@@ -41,7 +41,7 @@ const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const app = express()
 app.use(cors())
-app.use(bodyParser.json());
+app.use( bodyParser.json({limit: '25mb'}) );
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('public'))
 app.set('views', __dirname + '/views')
@@ -602,24 +602,40 @@ app.post('/decryptWithPrivateKey', upload.single('file'), async (req, res) => {
 
 app.post('/email', upload.single('file'), async (req, res) => {
   try {
-    const { email, name } = req.body;
+    const { email, name, filename, type } = req.body;
     const attachment = fs.readFileSync(req.file.path).toString("base64");
-    const msg = {
-      to: email,
-      from: 'no-reply@integraledger.com',
-      subject: 'New Subscription Agreement Document',
-      html: `Hi ${name},<br>
+    let template = '', subject = '';
+    if (type === 'IntegraEncrypt') {
+      subject = 'New Integra Encrypted Document';
+      template = `Hi ${name},<br>
+<br>
+A document has been encrypted and sent to you using your public cartridge using Integra Blockchain Encryption.  The document has been encrypted using two forms of encryption, RSA and AES, and can only be decrypted using your Integra Private Cartridge document.<br>
+<br>
+Please visit https://hedgefund.z20.web.core.windows.net/, then select "Individual" and then "Decrypt a Document".<br>
+<br>
+The attached file will dragged onto the left hand side of the screen and on the right hand side you will drag your Integra Private Cartridge and be asked to enter your Passphrase.  Once verified, the decrypted document will be available for download and viewing in your browser.<br>
+<br>
+Thank you from the entire Integra Team for trusting your document security with us!`;
+    } else if (type === 'HedgeFund') {
+      subject = 'New Subscription Agreement Document';
+      template = `Hi ${name},<br>
 <br>
 A new subscription agreement document has been generated using the Integra Hedge Fund Application.  The attached document has been encrypted for security of the information contained within the document.<br>
 <br>
 To decrypt the document, please go to https://hedgefund.z20.web.core.windows.net/, click "Individual", then click on "Decrypt a Document".  In order to decrypt this document make sure to have your private key attesation document available.<br>
 <br>
 Thanks,<br>
-David`,
+David`;
+    }
+    const msg = {
+      to: email,
+      from: 'no-reply@integraledger.com',
+      subject,
+      html: template,
       attachments: [
         {
           content: attachment,
-          filename: "SubscriptionAgreement_Encrypted.pdf",
+          filename,
           type: "application/pdf",
           disposition: "attachment"
         }
