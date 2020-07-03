@@ -82,7 +82,7 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
       },
     })
     const responseJson = await response.json()
@@ -107,7 +107,6 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
 app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
     const meta = Object.assign({}, req.body)
-    delete meta.subscription_key
     const cartridgeType = meta.cartridge_type
     delete meta.cartridge_type
     const pass_phrase = meta.pass_phrase
@@ -216,11 +215,11 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
           'identityType': 'com.integraledger.lmatid',
           'metaData': 'esign by mike',
           'value': encryptedData,
-          'Ocp-Apim-Subscription-Key': req.body.subscription_key
+          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
         }),
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': req.body.subscription_key
+          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
         },
     })
     // console.log(encryptedData)
@@ -268,7 +267,6 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 app.post('/doc', upload.single('file'), async (req, res) => {
   try {
     const meta = Object.assign({}, req.body)
-    delete meta.subscription_key
     const data_form = meta.data_form;
     delete meta.data_form;
 
@@ -357,11 +355,11 @@ app.post('/doc', upload.single('file'), async (req, res) => {
           'identityType': 'com.integraledger.lmatid',
           'metaData': '',
           'value': encryptedData,
-          'Ocp-Apim-Subscription-Key': req.body.subscription_key
+          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
         }),
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': req.body.subscription_key
+          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
         },
     })
     // console.log(encryptedData)
@@ -397,7 +395,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
         method: 'get',
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
         },
       })
       const responseJson = await response.json()
@@ -425,7 +423,7 @@ app.get('/publicKey/:id', async (req, res) => {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': 'd1097c4c28ba4b09accd006d1162ad78'
+        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
       },
     });
     const responseJson = await response.json();
