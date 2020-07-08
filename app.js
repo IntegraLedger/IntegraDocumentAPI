@@ -64,6 +64,17 @@ mongoose.connect(uri, {
 var api_routes = require('./routes/api/index');
 app.use('/api', api_routes);
 
+const getValue = async data => {
+  const response = await fetch(`${process.env.API_URL}/valueexists/` + data, {
+    method: 'get',
+    headers: {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+    },
+  });
+  return await response.json();
+}
+
 const encryptStringWithRsaPrivateKey = function(toEncrypt, privateKey) {
   const sign = crypto.createSign('SHA256');
   sign.update(toEncrypt);
@@ -72,20 +83,99 @@ const encryptStringWithRsaPrivateKey = function(toEncrypt, privateKey) {
   return signature.toString("base64");
 };
 
+const registerIdentity = async fileName => {
+  // SHA-256 hash file
+  const fileData = await readFileAsync('modified/' + fileName);
+  const encryptedData = crypto.createHash('sha256')
+    .update(fileData)
+    .digest('hex');
+  await fetch(`${process.env.API_URL}/registerIdentity`, {
+    method: 'post',
+    body: JSON.stringify({
+      'identityType': 'com.integraledger.lmatid',
+      'metaData': 'esign by mike',
+      'value': encryptedData,
+      'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+      'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+    },
+  });
+  return encryptedData;
+}
+
+const createPublicKeyObject = public_key => {
+  const pkhead = "-----BEGIN RSA PUBLIC KEY-----";
+  const pkfooter = "-----END RSA PUBLIC KEY-----";
+
+  let pubkey = public_key.replace(/\\n/g, '\n')
+  let fmt = "der";
+  if (pubkey.includes(pkhead)) {
+    fmt = "pem";
+  }
+  pubkey = pubkey.replace(pkhead, "");
+  pubkey = pubkey.replace(pkfooter, "pkfooter");
+  pubkey = pubkey.split(" ").join("+");
+  pubkey = pubkey.replace("pkfooter", pkfooter);
+  pubkey = pkhead + pubkey;
+  let keyData = {
+    key: pubkey,
+    format: fmt,
+    padding: crypto.constants.RSA_NO_PADDING
+  };
+  if (fmt === "der") keyData.type = "pkcs1";
+  return crypto.createPublicKey(keyData);
+}
+
+const createPrivateKeyObject = privateKey => {
+  const pkhead = "-----BEGIN RSA PRIVATE KEY-----";
+  const pkfooter = "-----END RSA PRIVATE KEY-----";
+
+  let privkey = privateKey.replace(/\\n/g, '\n') // Incoming public key
+  let fmt = "der";
+  if (privkey.includes(pkhead)) {
+    fmt = "pem";
+  }
+  privkey = privkey.replace(pkhead, "");
+  privkey = privkey.replace(pkfooter, "pkfooter");
+  privkey = privkey.split(" ").join("+");
+  privkey = privkey.replace("pkfooter", pkfooter);
+  privkey = pkhead + privkey;
+  let keyData = {
+    key: privkey,
+    format: fmt,
+    padding: crypto.constants.RSA_NO_PADDING
+  };
+  if (fmt === "der") keyData.type = "pkcs1";
+  return crypto.createPrivateKey(keyData);
+}
+
+const encrypt = (text) => {
+  const key = crypto.randomBytes(32);
+  const iv = crypto.randomBytes(16);
+  let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return { key, iv, encryptedData: encrypted.toString('hex') };
+}
+
+const decrypt = (text) => {
+  let iv = Buffer.from(text.iv, 'hex');
+  let encryptedText = Buffer.from(text.encryptedData, 'hex');
+  let decipher = crypto.createDecipheriv(algorithm, Buffer.from(text.key), iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
+
 app.post('/analyze', upload.single('file'), async (req, res) => {
   try {
     const fileData = await readFileAsync(req.file.path)
     const encryptedData = crypto.createHash('sha256')
       .update(fileData)
       .digest('hex')
-    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/valueexists/' + encryptedData, {
-      method: 'get',
-      headers: {
-        'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
-      },
-    })
-    const responseJson = await response.json()
+    const responseJson = await getValue(encryptedData)
     let result = {}
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
@@ -106,18 +196,10 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
 
 app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
-    const meta = Object.assign({}, req.body)
-    const cartridgeType = meta.cartridge_type
-    delete meta.cartridge_type
+    const { master_id, cartridge_type: cartridgeType, meta_form, data_form } = req.body;
+    const meta = JSON.parse(meta_form);
     const pass_phrase = meta.pass_phrase
     delete meta.pass_phrase
-    if (!req.file) delete meta.file
-
-    const data_form = meta.data_form;
-    delete meta.data_form;
-
-    const master_id = meta.master_id
-    delete meta.master_id
     let readingFileName = cartridgeType;
 
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
@@ -150,7 +232,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
       const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
 
-      const registerKeyRes = await fetch(`http://13.58.201.212:3011/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      const registerKeyRes = await fetch(`${process.env.API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
           method: 'post',
           headers: {
             'Content-Type': 'application/json',
@@ -204,26 +286,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${readingFileName}_Cartridge.pdf`
     await renameFileAsync('modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`), 'modified/' + fileName)
 
-    // SHA-256 hash file
-    const fileData = await readFileAsync('modified/' + fileName)
-    const encryptedData = crypto.createHash('sha256')
-      .update(fileData)
-      .digest('hex')
-    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/registerIdentity', {
-        method: 'post',
-        body: JSON.stringify({
-          'identityType': 'com.integraledger.lmatid',
-          'metaData': 'esign by mike',
-          'value': encryptedData,
-          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
-        },
-    })
-    // console.log(encryptedData)
-    // console.log(await response.json())
+    const encryptedData = await registerIdentity(fileName);
 
     if (!isHedgePublic) {
       // Store GUID and Hash to MongoDB
@@ -254,7 +317,11 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       res.setHeader('hash', encryptedData)
     }
 
-    res.download('modified/' + fileName, fileName)
+    res.download('modified/' + fileName, fileName, (err) => {
+      fs.unlink(`modified/${fileName}`, (err) => {
+        if (err) console.log(err)
+      })
+    })
     if (req.file)
       fs.unlink(req.file.path, (err) => {
         if (err) console.log(err)
@@ -266,12 +333,9 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
 app.post('/doc', upload.single('file'), async (req, res) => {
   try {
-    const meta = Object.assign({}, req.body)
-    const data_form = meta.data_form;
-    delete meta.data_form;
+    const { master_id, meta_form, data_form } = req.body;
 
-    const master_id = meta.master_id
-    delete meta.master_id
+    const meta = JSON.parse(meta_form);
 
     // Fill merge fields
     const content = fs.readFileSync(req.file.path, 'binary')
@@ -344,26 +408,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
     await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
 
-    // SHA-256 hash file
-    const fileData = await readFileAsync('modified/' + fileName)
-    const encryptedData = crypto.createHash('sha256')
-      .update(fileData)
-      .digest('hex')
-    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/registerIdentity', {
-        method: 'post',
-        body: JSON.stringify({
-          'identityType': 'com.integraledger.lmatid',
-          'metaData': '',
-          'value': encryptedData,
-          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
-        },
-    })
-    // console.log(encryptedData)
-    // console.log(await response.json())
+    const encryptedData = await registerIdentity(fileName);
 
     // Store GUID and Hash to MongoDB
     const instance = new QRModel()
@@ -377,7 +422,11 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     res.setHeader('id', guid)
     res.setHeader('hash', encryptedData)
 
-    res.download('modified/' + fileName, fileName)
+    res.download('modified/' + fileName, fileName, (err) => {
+      fs.unlink(`modified/${fileName}`, (err) => {
+        if (err) console.log(err)
+      })
+    })
     fs.unlink(req.file.path, (err) => {
       if (err) console.log(err)
     })
@@ -391,14 +440,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
   try {
     const qrData = await QRModel.findOne({ guid: req.params.guid }).exec()
     if (qrData) {
-      const response = await fetch('https://integraledger.azure-api.net/api/v1.4/valueexists/' + qrData.hash, {
-        method: 'get',
-        headers: {
-          'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
-        },
-      })
-      const responseJson = await response.json()
+      const responseJson = await getValue(qrData.hash)
       if (responseJson.exists) {
         res.render('success', {
           identityId: responseJson.data[0].Record.identityId,
@@ -419,7 +461,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
 
 app.get('/publicKey/:id', async (req, res) => {
   try {
-    const response = await fetch('http://13.58.201.212:3011/keyforowner/' + req.params.id, {
+    const response = await fetch(`${process.env.API_URL}/keyforowner/` + req.params.id, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -446,27 +488,7 @@ app.post('/verifyKey/:key', async (req, res) => {
   try {
     const key = req.params.key;
     const { public_key, encrypted_passphrase } = req.body;
-
-    const pkhead = "-----BEGIN RSA PUBLIC KEY-----";
-    const pkfooter = "-----END RSA PUBLIC KEY-----";
-
-    let pubkey = public_key.replace(/\\n/g, '\n') // Incoming public key
-    let fmt = "der";
-    if (pubkey.includes(pkhead)) {
-      fmt = "pem";
-    }
-    pubkey = pubkey.replace(pkhead, "");
-    pubkey = pubkey.replace(pkfooter, "pkfooter");
-    pubkey = pubkey.split(" ").join("+");
-    pubkey = pubkey.replace("pkfooter", pkfooter);
-    pubkey = pkhead + pubkey;
-    let keyData = {
-      key: pubkey,
-      format: fmt,
-      padding: crypto.constants.RSA_NO_PADDING
-    };
-    if (fmt === "der") keyData.type = "pkcs1";
-    const pubKey = crypto.createPublicKey(keyData);
+    const pubKey = createPublicKeyObject(public_key);
 
     const verify = crypto.createVerify('SHA256');
     verify.write(key);
@@ -480,67 +502,22 @@ app.post('/verifyKey/:key', async (req, res) => {
   }
 })
 
-const encrypt = (text) => {
-  const key = crypto.randomBytes(32);
-  const iv = crypto.randomBytes(16);
-  let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return { key, iv, encryptedData: encrypted.toString('hex') };
-}
-const decrypt = (text) => {
-  let iv = Buffer.from(text.iv, 'hex');
-  let encryptedText = Buffer.from(text.encryptedData, 'hex');
-  let decipher = crypto.createDecipheriv(algorithm, Buffer.from(text.key), iv);
-  let decrypted = decipher.update(encryptedText);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return decrypted.toString();
-}
-
-const encryptWithRsaPublicKey = function(filePath, publicKey) {
-  var toEncrypt = fs.readFileSync(filePath, "binary");
-  var buffer = Buffer.from(toEncrypt);
+app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
   try {
-    const pkhead = "-----BEGIN RSA PUBLIC KEY-----";
-    const pkfooter = "-----END RSA PUBLIC KEY-----";
-
-    let pubkey = publicKey.replace(/\\n/g, '\n') // Incoming public key
-    let fmt = "der";
-    if (pubkey.includes(pkhead)) {
-      fmt = "pem";
-    }
-    pubkey = pubkey.replace(pkhead, "");
-    pubkey = pubkey.replace(pkfooter, "pkfooter");
-    pubkey = pubkey.split(" ").join("+");
-    pubkey = pubkey.replace("pkfooter", pkfooter);
-    pubkey = pkhead + pubkey;
-    let keyData = {
-      key: pubkey,
-      format: fmt,
-      padding: crypto.constants.RSA_NO_PADDING
-    };
-    if (fmt === "der") keyData.type = "pkcs1";
-    const key = crypto.createPublicKey(keyData);
-
+    const { publicKey } = req.body;
+    var toEncrypt = fs.readFileSync(req.file.path, "binary");
+    var buffer = Buffer.from(toEncrypt);
+    const key = createPublicKeyObject(publicKey);
     const enc = encrypt(buffer);
     const AESEncryptedDoc = enc.encryptedData;
     const RSAEncryptedKey = crypto.publicEncrypt(key, enc.key);
     const RSAEncryptedIv = crypto.publicEncrypt(key, enc.iv);
-    return {
+    const encrypted = {
       AESEncryptedDoc,
       RSAEncryptedKey: RSAEncryptedKey.toString("base64"),
       RSAEncryptedIv: RSAEncryptedIv.toString("base64")
     };
 
-  } catch( e ) {
-    console.log(e)
-  }
-};
-
-app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
-  try {
-    const { publicKey } = req.body;
-    const encrypted = encryptWithRsaPublicKey(req.file.path, publicKey)
     res.send(encrypted)
 
     if (req.file)
@@ -552,31 +529,11 @@ app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
   }
 })
 
-app.post('/decryptWithPrivateKey', upload.single('file'), async (req, res) => {
+app.post('/decryptWithPrivateKey', async (req, res) => {
   try {
     const { data, privateKey } = req.body;
-    const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey, filename } = JSON.parse(data)
-
-    const pkhead = "-----BEGIN RSA PRIVATE KEY-----";
-    const pkfooter = "-----END RSA PRIVATE KEY-----";
-
-    let privkey = privateKey.replace(/\\n/g, '\n') // Incoming public key
-    let fmt = "der";
-    if (privkey.includes(pkhead)) {
-      fmt = "pem";
-    }
-    privkey = privkey.replace(pkhead, "");
-    privkey = privkey.replace(pkfooter, "pkfooter");
-    privkey = privkey.split(" ").join("+");
-    privkey = privkey.replace("pkfooter", pkfooter);
-    privkey = pkhead + privkey;
-    let keyData = {
-      key: privkey,
-      format: fmt,
-      padding: crypto.constants.RSA_NO_PADDING
-    };
-    if (fmt === "der") keyData.type = "pkcs1";
-    const key = crypto.createPrivateKey(keyData);
+    const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey, filename } = data
+    const key = createPrivateKeyObject(privateKey);
 
     const aes_iv = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedIV, 'base64'));
     const aes_key = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedKey, 'base64'));
@@ -688,7 +645,8 @@ app.post('/readFile', upload.single('file'), (req, res) => {
           });
           filecontent = JSON.stringify(result);
           break;
-        case '.txt' || '.csv':
+        case '.txt':
+        case '.csv':
           filecontent = data;
           break;
         default:
