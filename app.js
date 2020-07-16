@@ -200,7 +200,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     const meta = JSON.parse(meta_form);
     const pass_phrase = meta.pass_phrase
     delete meta.pass_phrase
-    let readingFileName = cartridgeType;
+    let readingFileName = (cartridgeType !== 'Organization' && cartridgeType !== 'Personal' && cartridgeType !== 'Encrypt') ? 'CartridgeGeneric' : cartridgeType;
 
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
     if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
@@ -307,6 +307,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
         finalFileName = `${meta.given_name} ${meta.family_name} Key.pdf`;
       else if (cartridgeType === 'Encrypt')
         finalFileName = `Encrypt.pdf`;
+      else finalFileName = `${cartridgeType}.pdf`;
 
       if (req.query.type === 'hedgefund' && cartridgeType === 'Personal')
         finalFileName = `${readingFileName}.pdf`
