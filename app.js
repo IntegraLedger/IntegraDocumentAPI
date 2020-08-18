@@ -58,7 +58,7 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
     const encryptedData = crypto.createHash('sha256')
       .update(fileData)
       .digest('hex')
-    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/valueexists/' + encryptedData, {
+    const response = await fetch('http://gateway.c6333d690b85431b9774.westus.aksapp.io/v1/valueexists/' + encryptedData, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
 
     // Add QR Code into first page
     const guid = uuidv1()
-    await QRCode.toFile('qr.png', 'https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid)
+    await QRCode.toFile('qr.png', 'https://hoganlovellsapi.azurewebsites.net/QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
@@ -127,7 +127,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     })
     pageModifier.endContext().writePage()
     pageModifier
-      .attachURLLinktoCurrentPage('https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .attachURLLinktoCurrentPage('https://hoganlovellsapi.azurewebsites.net/QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
       .endContext().writePage()
     writer.end()
 
@@ -140,7 +140,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     const encryptedData = crypto.createHash('sha256')
       .update(fileData)
       .digest('hex')
-    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/registerIdentity', {
+    const response = await fetch('http://gateway.c6333d690b85431b9774.westus.aksapp.io/v1/registerIdentity', {
         method: 'post',
         body: JSON.stringify({
           'identityType': 'com.integraledger.lmatid',
@@ -209,7 +209,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
 
     // Add QR Code into first page
     const guid = uuidv1()
-    await QRCode.toFile('qr.png', 'https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid)
+    await QRCode.toFile('qr.png', 'https://hoganlovellsapi.azurewebsites.net/QRVerify/' + guid)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
@@ -231,7 +231,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     })
     pageModifier.endContext().writePage()
     pageModifier
-      .attachURLLinktoCurrentPage('https://hoganlovellsapi.azurewebsites.net//QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .attachURLLinktoCurrentPage('https://hoganlovellsapi.azurewebsites.net/QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
       .endContext().writePage()
     writer.end()
 
@@ -244,7 +244,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     const encryptedData = crypto.createHash('sha256')
       .update(fileData)
       .digest('hex')
-    const response = await fetch('https://integraledger.azure-api.net/api/v1.4/registerIdentity', {
+    const response = await fetch('http://gateway.c6333d690b85431b9774.westus.aksapp.io/v1/registerIdentity', {
         method: 'post',
         body: JSON.stringify({
           'identityType': 'com.integraledger.lmatid',
@@ -281,7 +281,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
   try {
     const qrData = await QRModel.findOne({ guid: req.params.guid }).exec()
     if (qrData) {
-      const response = await fetch('https://integraledger.azure-api.net/api/v1.4/valueexists/' + qrData.hash, {
+      const response = await fetch('http://gateway.c6333d690b85431b9774.westus.aksapp.io/v1/valueexists/' + qrData.hash, {
         method: 'get',
         headers: {
           'Content-Type': 'application/json',
