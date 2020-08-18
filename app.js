@@ -39,6 +39,12 @@ const uuidv1 = require('uuid/v1')
 const moment = require('moment')
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+const Stripe = require('stripe');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2020-03-02; identity_beta=v3',
+});
+
 const app = express()
 app.use(cors())
 app.use( bodyParser.json({limit: '25mb'}) );
@@ -656,6 +662,69 @@ app.post('/readFile', upload.single('file'), (req, res) => {
       res.send(filecontent)
   });
 });
+
+app.get('/verification', async (req, res) => {
+  try {
+
+    const resource = Stripe.StripeResource.extend({
+      request: Stripe.StripeResource.method({
+        method: 'POST',
+        path: 'identity/verification_intents',
+      })
+    });
+
+    new resource(stripe).request({
+      'return_url': `${process.env.WEB_URL}/id-verification?vi={VERIFICATION_INTENT_ID}`,
+      'requested_verifications': [
+        'identity_document',
+      ]
+    },
+      function(err, response) {
+        res.send({ url: response.next_action.redirect_to_url })
+      }
+    );
+
+  } catch (err) {
+    console.log(err)
+    res.send(err)
+  }
+})
+
+app.get('/verification/:id', async (req, res) => {
+  try {
+    const verification_intent_id = req.params.id;
+
+    const resource = stripe.StripeResource.extend({
+      request: stripe.StripeResource.method({
+        method: 'POST',
+        path: `identity/verification_intents/${verification_intent_id}`,
+      })
+    });
+
+    new resource(stripe).request({
+    },
+      function(err, response) {
+        res.send(response);
+      }
+    );
+
+  } catch (err) {
+    console.log(err)
+    res.send(err)
+  }
+})
+
+// app.post("/webhooks", async (req, res) => {
+//   try {
+//     console.log("/webhooks POST route hit! req.body: ", req.body)
+//     const event = req.body
+//     res.send(event)
+//   }
+//   catch (err) {
+//       console.log("/webhooks route error: ", err)
+//       res.send(400)
+//   }
+// })
 
 const port = process.env.PORT || 3000
 
