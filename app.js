@@ -680,7 +680,7 @@ app.get('/verification', async (req, res) => {
       ]
     },
       function(err, response) {
-        res.send({ url: response.next_action.redirect_to_url })
+        res.send({ id: response.id, url: response.next_action.redirect_to_url })
       }
     );
 
