@@ -54,9 +54,13 @@ app.set('views', __dirname + '/views')
 app.set('view engine', 'ejs');
 
 // Connect to mongodb
-const uri = 'mongodb+srv://dbIntegra:password22@cluster0-qqiiz.azure.mongodb.net/integra?retryWrites=true&w=majority';
+// old db
+//const uri = 'mongodb+srv://dbIntegra:password22@cluster0-qqiiz.azure.mongodb.net/integra?retryWrites=true&w=majority';
+
+// new  atlas db
+const uri = 'mongodb+srv://e-signature:IMG_Fo_5javHuwJ.m687gV-eX0-4Ox.q@cluster0.tsovs.azure.mongodb.net/dbIntegra?ssl=true&retryWrites=true';
+
 mongoose.connect(uri, {
-  dbName: 'dbIntegra',
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
