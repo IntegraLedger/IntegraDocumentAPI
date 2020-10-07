@@ -9,7 +9,6 @@ const fs = require('fs')
 const { promisify } = require('util')
 const renameFileAsync = promisify(fs.rename)
 const readFileAsync = promisify(fs.readFile)
-// const writeFileAsync = promisify(fs.writeFile)
 const multer  = require('multer')
 const upload = multer({
   dest: 'uploads/',
@@ -29,17 +28,10 @@ var XLSX = require('xlsx');
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser');
-const Schema = mongoose.Schema
-const QRSchema = new Schema({
-  guid: String,
-  hash: String,
-})
-const QRModel = mongoose.model('QR', QRSchema);
 const uuidv1 = require('uuid/v1')
 const moment = require('moment')
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2020-03-02; identity_beta=v3',
@@ -71,7 +63,7 @@ var api_routes = require('./routes/api/index');
 app.use('/api', api_routes);
 
 const getValue = async data => {
-  const response = await fetch(`${process.env.API_URL}/valueexists/` + data, {
+  const response = await fetch(`${process.env.BLOCKCHAIN_API_URL}/valueexists/` + data, {
     method: 'get',
     headers: {
         'Content-Type': 'application/json',
@@ -89,19 +81,19 @@ const encryptStringWithRsaPrivateKey = function(toEncrypt, privateKey) {
   return signature.toString("base64");
 };
 
-const registerIdentity = async fileName => {
+const registerIdentity = async (fileName, guid) => {
   // SHA-256 hash file
   const fileData = await readFileAsync('modified/' + fileName);
   const encryptedData = crypto.createHash('sha256')
     .update(fileData)
     .digest('hex');
-  await fetch(`${process.env.API_URL}/registerIdentity`, {
+  await fetch(`${process.env.BLOCKCHAIN_API_URL}/registerIdentity`, {
     method: 'post',
     body: JSON.stringify({
       'identityType': 'com.integraledger.lmatid',
-      'metaData': 'esign by mike',
+      'metaData': 'Integra Smart Document',
       'value': encryptedData,
-      'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+      'recordId': guid,
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -238,7 +230,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
       const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
 
-      const registerKeyRes = await fetch(`${process.env.API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      const registerKeyRes = await fetch(`${process.env.BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
           method: 'post',
           headers: {
             'Content-Type': 'application/json',
@@ -254,7 +246,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     fillForm(writer, meta)
 
     // Add QR Code into first page
-    await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
@@ -284,7 +276,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     })
     pageModifier.endContext().writePage()
     pageModifier
-      .attachURLLinktoCurrentPage('https://integraapi.azurewebsites.net/QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
       .endContext().writePage()
     writer.end()
 
@@ -292,15 +284,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${readingFileName}_Cartridge.pdf`
     await renameFileAsync('modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`), 'modified/' + fileName)
 
-    const encryptedData = await registerIdentity(fileName);
-
-    if (!isHedgePublic) {
-      // Store GUID and Hash to MongoDB
-      const instance = new QRModel()
-      instance.guid = guid
-      instance.hash = encryptedData
-      instance.save()
-    }
+    const encryptedData = await registerIdentity(fileName, guid);
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
@@ -377,7 +361,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
       infoDictionary.addAdditionalInfoEntry('master_id', master_id)
 
     // Add QR Code into first page
-    await QRCode.toFile('qr.png', 'https://integraapi.azurewebsites.net/QRVerify/' + guid)
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
     const pageBox = reader.parsePage(0).getMediaBox()
     const pageWidth = pageBox[2] - pageBox[0]
     const pageHeight = pageBox[3] - pageBox[1]
@@ -407,7 +391,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     })
     pageModifier.endContext().writePage()
     pageModifier
-      .attachURLLinktoCurrentPage('https://integraapi.azurewebsites.net/QRVerify/' + guid, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
       .endContext().writePage()
     writer.end()
 
@@ -415,13 +399,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
     await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
 
-    const encryptedData = await registerIdentity(fileName);
-
-    // Store GUID and Hash to MongoDB
-    const instance = new QRModel()
-    instance.guid = guid
-    instance.hash = encryptedData
-    instance.save()
+    const encryptedData = await registerIdentity(fileName, guid);
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
@@ -445,19 +423,21 @@ app.post('/doc', upload.single('file'), async (req, res) => {
 
 app.get('/QRVerify/:guid', async (req, res) => {
   try {
-    const qrData = await QRModel.findOne({ guid: req.params.guid }).exec()
-    if (qrData) {
-      const responseJson = await getValue(qrData.hash)
-      if (responseJson.exists) {
-        res.render('success', {
-          identityId: responseJson.data[0].Record.identityId,
-          value: responseJson.data[0].Record.value,
-          metaData: responseJson.data[0].Record.metaData,
-          creationDate: moment(responseJson.data[0].Record.creationDate).format('LLL'),
-        })
-      } else {
-        res.render('failure')
-      }
+    const response = await fetch(`${process.env.BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
+      method: 'get',
+      headers: {
+          'Content-Type': 'application/json',
+          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+      },
+    });
+    const result = await response.json()
+    if (result.exists) {
+      res.render('success', {
+        identityId: result.data[0].Record.identityId,
+        value: result.data[0].Record.value,
+        metaData: result.data[0].Record.metaData,
+        creationDate: moment(result.data[0].Record.creationDate).format('LLL'),
+      })
     } else {
       res.render('failure')
     }
@@ -468,7 +448,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
 
 app.get('/publicKey/:id', async (req, res) => {
   try {
-    const response = await fetch(`${process.env.API_URL}/keyforowner/` + req.params.id, {
+    const response = await fetch(`${process.env.BLOCKCHAIN_API_URL}/keyforowner/` + req.params.id, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -710,6 +690,15 @@ app.get('/verification/:id', async (req, res) => {
 
   } catch (err) {
     console.log(err)
+    res.send(err)
+  }
+})
+
+app.get('/checkFile', (req, res) => {
+
+  try {
+    res.render('checkfile')
+  } catch (err) {
     res.send(err)
   }
 })

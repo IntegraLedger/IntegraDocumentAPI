@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Authenticated by Integra!</title>
+    <link rel="stylesheet" href="../../dropzone.css">
+    <script src="../../dropzone.js"></script>
+    <script src="../../crypto-js/crypto-js.js"></script>
+    <script>
+      var fileObject;
+      window.Dropzone.options.fileDropzone = {
+        maxFiles: 1,
+        uploadMultiple: false,
+        acceptedFiles: '.pdf,',
+        dictDefaultMessage: '<h3>Drop file here or click to upload.</h3><br/>Upload smart pdf document to analyze the response json',
+        init: function() {
+          this.on('addedfile', function(file) {
+            const btnNext = document.getElementById('btn-next');
+            btnNext.disabled = false;
+            fileObject = file;
+            this.removeFile(file);
+          });
+        }
+      };
+
+      function onLoad() {
+        const btnNext = document.getElementById('btn-next');
+        btnNext.disabled = true;
+
+        const textStatus = document.getElementById('text-status');
+        textStatus.style.display = 'none';
+
+        if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+          btnNext.style.display = 'none';
+        } else {
+          btnNext.style.display = 'block';
+        }
+        const divStep2 = document.getElementById('div-step-2');
+        divStep2.style.display = 'none';
+      }
+
+      function onAnalyze() {
+        const xhr = new XMLHttpRequest();
+        var formData = new FormData();
+        formData.append('file', fileObject);
+        xhr.open('POST', '/analyze', true);
+        xhr.send(formData);
+
+        const btnNext = document.getElementById('btn-next');
+        btnNext.disabled = true;
+        const textStatus = document.getElementById('text-status');
+        textStatus.style.display = 'block';
+
+        xhr.addEventListener( 'load', function(event) {
+          const divStep1 = document.getElementById('div-step-1');
+          const divStep2 = document.getElementById('div-step-2');
+          divStep1.style.display = 'none';
+          divStep2.style.display = 'flex';
+          const textResponse = document.getElementById('text-response');
+          textResponse.innerHTML = event.target.responseText;
+        } );
+      }
+
+      function onBack() {
+        const divStep1 = document.getElementById('div-step-1');
+        const divStep2 = document.getElementById('div-step-2');
+        divStep1.style.display = 'flex';
+        divStep2.style.display = 'none';
+        fileObject = null;
+        const btnNext = document.getElementById('btn-next');
+        btnNext.disabled = true;
+        const textStatus = document.getElementById('text-status');
+        textStatus.style.display = 'none';
+      }
+    </script>
+  </head>
+  <body onload="onLoad()">
+    <div id="div-step-1" class="step">
+      <img class="logo" src="../../logo.png" alt="Integra" />
+      <div class="dropzone-area" id="dropzone-area">
+        <form id="file-dropzone" action="/" class="dropzone"></form>
+      </div>
+      </table>
+      <button id="btn-next" class="btn-next" onclick="onAnalyze()">Analyze</button>
+      <p id="text-status">Analyzing...</p>
+    </div>
+    <div id="div-step-2" class="step">
+      <p id="text-response"></p>
+      <button id="btn-back" class="btn-back" onclick="onBack()">Back</button>
+    </div>
+  </body>
+</html>
+<style>
+  .step {
+    margin-top: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .btn-next,
+  .btn-back {
+    width: 100px;
+    height: 40px;
+    outline: none;
+    font-size: 18px;
+    margin-top: 20px;
+  }
+  .dropzone-area {
+    margin-top: 50px;
+  }
+  #file-dropzone {
+    width: 500px;
+    height: 250px;
+  }
+</style>
