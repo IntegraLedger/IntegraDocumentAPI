@@ -36,6 +36,8 @@ const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2020-03-02; identity_beta=v3',
 });
+const swaggerJsdoc = require("swagger-jsdoc");
+const swaggerUi = require("swagger-ui-express");
 
 const app = express()
 app.use(cors())
@@ -94,6 +96,9 @@ const registerIdentity = async (fileName, guid) => {
       'metaData': 'Integra Smart Document',
       'value': encryptedData,
       'recordId': guid,
+      'opt1': '',
+      'opt2': '',
+      'opt3': '',
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -167,6 +172,44 @@ const decrypt = (text) => {
   return decrypted.toString();
 }
 
+/**
+ * @swagger
+ * tags:
+ *  name: Smart Doc
+ *  description: API to manage smart docs.
+ */
+
+/**
+ * @swagger
+ * path:
+ *  /analyze/:
+ *    post:
+ *      summary: Accept PDF, verify it and return meta data if authentic
+ *      description: Accept PDF, verify it and return meta data if authentic
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                file:
+ *                  type: file
+ *      responses:
+ *        "200":
+ *          description: Analyze meta data
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  result:
+ *                    type: boolean
+ *                  creationDate:
+ *                    type: string
+ */
+
 app.post('/analyze', upload.single('file'), async (req, res) => {
   try {
     const fileData = await readFileAsync(req.file.path)
@@ -191,6 +234,48 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
     res.send(err)
   }
 })
+
+/**
+ * @swagger
+ * path:
+ *  /pdf/:
+ *    post:
+ *      description: Create signed pdf format smart document with adding metadata, filling form fields of pdf file and adding QR code
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                master_id:
+ *                  type: string
+ *                  description: master ID of the smart document
+ *                cartridge_type:
+ *                  type: string
+ *                  description: required when you want cartridge smart document. It can be `Organization`, `Personal`, `Encrypt` and so on.
+ *                meta_form:
+ *                  type: string
+ *                  required: true
+ *                  description: metadata for the smart document.
+ *                data_form:
+ *                  type: string
+ *                  required: true
+ *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
+ *                file:
+ *                  type: file
+ *                  description: File to put metadata. not necessary for the cartridge creation.
+ *      parameters:
+ *        - in: query
+ *          name: type
+ *          schema:
+ *            type: string
+ *          description: used for hedgefund to create private and public personal cartridge documents.
+ *      responses:
+ *        "200":
+ *          description: return signed pdf file
+ */
 
 app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
@@ -322,6 +407,39 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
   }
 })
 
+/**
+ * @swagger
+ * path:
+ *  /doc/:
+ *    post:
+ *      description: Create signed docx format smart document with adding metadata, filling form fields of pdf file and adding QR code
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                master_id:
+ *                  type: string
+ *                  description: master ID of the smart document
+ *                meta_form:
+ *                  type: string
+ *                  required: true
+ *                  description: metadata for the smart document.
+ *                data_form:
+ *                  type: string
+ *                  required: true
+ *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
+ *                file:
+ *                  type: file
+ *                  description: File to put metadata.
+ *      responses:
+ *        "200":
+ *          description: return signed docx file
+ */
+
 app.post('/doc', upload.single('file'), async (req, res) => {
   try {
     const { master_id, meta_form, data_form } = req.body;
@@ -421,6 +539,25 @@ app.post('/doc', upload.single('file'), async (req, res) => {
   }
 })
 
+/**
+ * @swagger
+ * path:
+ *  /QRVerify/{guid}:
+ *    get:
+ *      description: Check if document(pdf & docx) is already registered by two APIs /pdf and /doc
+ *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: path
+ *          name: guid
+ *          schema:
+ *            type: string
+ *          required: true
+ *          description: GUID of the file to check
+ *      responses:
+ *        "200":
+ *          description: render success template screen if document is registered, failure template screen if not.
+ */
+
 app.get('/QRVerify/:guid', async (req, res) => {
   try {
     const response = await fetch(`${process.env.BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
@@ -445,6 +582,36 @@ app.get('/QRVerify/:guid', async (req, res) => {
     res.send(err)
   }
 })
+
+/**
+ * @swagger
+ * path:
+ *  /publicKey/{id}:
+ *    get:
+ *      description: Get public key of the smart document
+ *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: path
+ *          name: id
+ *          schema:
+ *            type: string
+ *          required: true
+ *          description: GUID of the file
+ *      responses:
+ *        "200":
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  exists:
+ *                    type: boolean
+ *                  publicKey:
+ *                    type: string
+ *                    description: if `exists` is true, `publicKey` is the public key. if false, doesn't have public key.
+ *        "500":
+ *          description: Not registered
+ */
 
 app.get('/publicKey/:id', async (req, res) => {
   try {
@@ -471,6 +638,38 @@ app.get('/publicKey/:id', async (req, res) => {
   }
 })
 
+/**
+ * @swagger
+ * path:
+ *  /verifyKey/{key}:
+ *    post:
+ *      description: verify key with the correct encrypted passphrase
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                public_key:
+ *                  type: string
+ *                  description: public key.
+ *                encrypted_passphrase:
+ *                  type: string
+ *                  description: encrypted pass phrase
+ *      parameters:
+ *        - in: path
+ *          name: key
+ *          schema:
+ *            type: string
+ *          required: true
+ *          description: pass key to check
+ *      responses:
+ *        "200":
+ *          description: true if verified, false if not.
+ */
+
 app.post('/verifyKey/:key', async (req, res) => {
   try {
     const key = req.params.key;
@@ -488,6 +687,44 @@ app.post('/verifyKey/:key', async (req, res) => {
     res.status(500).json(err);
   }
 })
+
+/**
+ * @swagger
+ * path:
+ *  /encryptWithPublicKey:
+ *    post:
+ *      description: encrypt file with public key
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                file:
+ *                  type: file
+ *                  description: File to encrypt.
+ *                publicKey:
+ *                  type: string
+ *                  description: public key.
+ *      responses:
+ *        "200":
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  AESEncryptedDoc:
+ *                    type: string
+ *                    description: aes-256 encrypted data
+ *                  RSAEncryptedKey:
+ *                    type: string
+ *                    description: encrypted key
+ *                  RSAEncryptedIv:
+ *                    type: string
+ *                    description: encryped iv
+ */
 
 app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
   try {
@@ -515,6 +752,31 @@ app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
     res.send(err)
   }
 })
+
+/**
+ * @swagger
+ * path:
+ *  /decryptWithPrivateKey:
+ *    post:
+ *      description: decrypt file with private key
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                data:
+ *                  type: string
+ *                  description: encrypted data
+ *                privateKey:
+ *                  type: string
+ *                  description: private key.
+ *      responses:
+ *        "200":
+ *          description: return decrypted file
+ */
 
 app.post('/decryptWithPrivateKey', async (req, res) => {
   try {
@@ -714,6 +976,35 @@ app.get('/checkFile', (req, res) => {
 //       res.send(400)
 //   }
 // })
+
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Integra Backend API with Swagger",
+      version: "0.1.0",
+      description:
+        "This is a Integra Backend API with Swagger",
+      license: {
+        name: "MIT",
+        url: "https://spdx.org/licenses/MIT.html",
+      },
+      contact: {
+        name: "Integra",
+        url: "https://cartridge.integraledger.com/",
+        email: "oleksandr.exp@gmail.com",
+      },
+    },
+  },
+  apis: ["./app.js", "./routes/api/forms.js"],
+};
+
+const specs = swaggerJsdoc(options);
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, { explorer: true })
+);
 
 const port = process.env.PORT || 3000
 
