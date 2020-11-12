@@ -538,6 +538,9 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     })
   } catch (err) {
     console.log('err')
+  }
+})
+
 const doRequest = (url, filename) => {
   return new Promise((resolve, reject) => {
     const file  = fs.createWriteStream(filename)
