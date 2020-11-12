@@ -6,6 +6,9 @@ const fetch = require('node-fetch')
 const crypto = require('crypto')
 const algorithm = 'aes-256-cbc';
 const fs = require('fs')
+const https = require('https');
+const azure = require('azure-storage');
+
 const { promisify } = require('util')
 const renameFileAsync = promisify(fs.rename)
 const readFileAsync = promisify(fs.readFile)
@@ -535,6 +538,125 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     })
   } catch (err) {
     console.log('err')
+const doRequest = (url, filename) => {
+  return new Promise((resolve, reject) => {
+    const file  = fs.createWriteStream(filename)
+    const request = https.get(url, (response) => {
+      response.pipe(file);
+      file.on("finish", function() {
+        file.close(() => {
+         resolve(filename);
+        });
+       });
+       file.on("error", function(err) {
+        fs.unlink(filename);
+        reject(err);
+       });
+    });
+
+  });
+}
+
+const uploadFileToAzure = (fileName) => {
+  return new Promise((resolve, reject) => {
+    const blobService = azure.createBlobService();
+    blobService.createBlockBlobFromLocalFile('docassemble', fileName, `modified/${fileName}`, function(error, result, response) {
+      var containerName = 'docassemble';
+      var hostName = 'https://doccreationcenter.blob.core.windows.net';
+      const url = blobService.getUrl(containerName, fileName, null, hostName);
+
+      if (!error) {
+        resolve(url)
+      } else {
+        reject(error)
+      }
+    });
+  });
+}
+
+app.post('/docassemble', async (req, res) => {
+  try {
+    const { meta_form, file } = req.body;
+    const meta = JSON.parse(meta_form);
+
+    const srcFileName = 'modified/docassemble.pdf'
+    const result = await doRequest(file, srcFileName)
+
+    // Create pdf writer
+    const writer = hummus.createWriterToModify(srcFileName, {
+      modifiedFilePath: 'modified/docassemble_modified.pdf'
+    })
+    const reader = hummus.createReader(srcFileName)
+    // Add meta data
+    const infoDictionary = writer.getDocumentContext().getInfoDictionary()
+    for (const key of Object.keys(meta)) {
+      infoDictionary.addAdditionalInfoEntry(key, meta[key])
+    }
+    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
+    const guid = uuidv1()
+    infoDictionary.addAdditionalInfoEntry('id', guid)
+
+    // Fill form fields
+    meta.id = guid;
+    fillForm(writer, meta)
+
+    // Add QR Code into first page
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
+    const pageBox = reader.parsePage(0).getMediaBox()
+    const pageWidth = pageBox[2] - pageBox[0]
+    const pageHeight = pageBox[3] - pageBox[1]
+    const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
+    const ctx = pageModifier.startContext().getContext()
+    ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
+      transformation: {
+        width: 100,
+        height: 100,
+        fit: 'always'
+      }
+    })
+
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, 'integra-qr.png', {
+      transformation: {
+        width: 30,
+        height: 30,
+        fit: 'always'
+      }
+    })
+    pageModifier.endContext().writePage()
+    pageModifier
+      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .endContext().writePage()
+    writer.end()
+
+
+    const originName = file.split('/').pop()
+
+    // Generate file name (Attach 'SmartDoc' to original filename)
+    const fileName = originName.substring(0, originName.length - 4) + '_SmartDoc.pdf'
+    await renameFileAsync('modified/docassemble_modified.pdf', 'modified/' + fileName)
+
+    const encryptedData = await registerIdentity(fileName, guid);
+
+    // Attach file name to response header
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
+    res.setHeader('file-name', fileName)
+    res.setHeader('id', guid)
+    res.setHeader('hash', encryptedData)
+
+    const uploadedUrl = await uploadFileToAzure(fileName)
+    res.status(200).json({
+      success: true,
+      url: uploadedUrl
+    });
+
+    fs.unlink(`modified/${fileName}`, (err) => {
+      if (err) console.log(err)
+    })
+    fs.unlink('modified/docassemble.pdf', (err) => {
+      if (err) console.log(err)
+    })
+  } catch (err) {
+    console.log(err)
     res.send(err)
   }
 })
