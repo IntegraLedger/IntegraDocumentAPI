@@ -577,6 +577,30 @@ const uploadFileToAzure = (fileName) => {
   });
 }
 
+const deleteAzureBlob = (fileName) => {
+  return new Promise((resolve, reject) => {
+    const blobService = azure.createBlobService();
+    blobService.deleteBlob('docassemble', fileName, function(error, response) {
+      if (!error) {
+        resolve(true)
+      } else {
+        reject(error)
+      }
+    })
+  });
+}
+
+app.delete('/docassemble', async (req, res) => {
+  try {
+    await deleteAzureBlob(req.body.name)
+    res.status(200).json({
+      success: true,
+    });
+  } catch (err) {
+    res.status(err.statusCode || 404).send(err)
+  }
+})
+
 app.post('/docassemble', async (req, res) => {
   try {
     const { meta_form, file } = req.body;
