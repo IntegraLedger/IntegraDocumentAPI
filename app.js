@@ -1114,6 +1114,10 @@ app.get('/checkFile', (req, res) => {
   }
 })
 
+app.get('/', (req, res) => {
+  res.send(`Integra Backend - Blockchain API: ${process.env.BLOCKCHAIN_API_URL}`)
+});
+
 // app.post("/webhooks", async (req, res) => {
 //   try {
 //     console.log("/webhooks POST route hit! req.body: ", req.body)
