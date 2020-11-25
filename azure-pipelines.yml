@@ -11,7 +11,7 @@ resources:
 variables:
   # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: '7dbc0df4-28f2-426f-a342-6fb0a0ff6c8c'
-  imageRepository: 'integrabackend'
+  imageRepository: 'integra-backend'
   containerRegistry: 'integraproductionapi.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
