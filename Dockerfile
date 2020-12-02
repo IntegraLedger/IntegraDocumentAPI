@@ -13,6 +13,9 @@ RUN npm install
 
 COPY . .
 
+RUN test -e .env.dev && cp .env.dev .env || echo "Production"
+RUN test -e .env.prod && cp .env.prod .env || echo "Development"
+
 ENV PORT 3000
 EXPOSE ${PORT}
 CMD ["node", "app.js"]
