@@ -6,6 +6,7 @@ const fetch = require('node-fetch')
 const crypto = require('crypto')
 const algorithm = 'aes-256-cbc';
 const fs = require('fs')
+const http = require('http');
 const https = require('https');
 const azure = require('azure-storage');
 
@@ -542,9 +543,10 @@ app.post('/doc', upload.single('file'), async (req, res) => {
 })
 
 const doRequest = (url, filename) => {
+  const proto = url.startsWith('https') ? https : http;
   return new Promise((resolve, reject) => {
     const file  = fs.createWriteStream(filename)
-    const request = https.get(url, (response) => {
+    const request = proto.get(url, (response) => {
       response.pipe(file);
       file.on("finish", function() {
         file.close(() => {
