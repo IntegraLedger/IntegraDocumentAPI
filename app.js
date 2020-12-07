@@ -287,7 +287,10 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     const meta = JSON.parse(meta_form);
     const pass_phrase = meta.pass_phrase
     delete meta.pass_phrase
-    let readingFileName = (cartridgeType !== 'Organization' && cartridgeType !== 'Personal' && cartridgeType !== 'Encrypt') ? 'CartridgeGeneric' : cartridgeType;
+    let readingFileName = (cartridgeType !== 'Organization' &&
+      cartridgeType !== 'Personal' &&
+      cartridgeType !== 'Encrypt' &&
+      cartridgeType !== 'Purchaser') ? 'CartridgeGeneric' : cartridgeType;
 
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
     if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
@@ -328,6 +331,21 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       // const json = await registerKeyRes.json()
       const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey)
       infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted)
+      infoDictionary.addAdditionalInfoEntry('private_key', privkeyString)
+    }
+    if (cartridgeType && cartridgeType === 'Purchaser') {
+      const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 4096,
+      });
+      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
+      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
+
+      await fetch(`${process.env.BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+        method: 'post',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString)
     }
     // Fill form fields
