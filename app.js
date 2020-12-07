@@ -87,7 +87,7 @@ const encryptStringWithRsaPrivateKey = function(toEncrypt, privateKey) {
   return signature.toString("base64");
 };
 
-const registerIdentity = async (fileName, guid) => {
+const registerIdentity = async (fileName, guid, opt1 = '') => {
   // SHA-256 hash file
   const fileData = await readFileAsync('modified/' + fileName);
   const encryptedData = crypto.createHash('sha256')
@@ -100,7 +100,7 @@ const registerIdentity = async (fileName, guid) => {
       'metaData': 'Integra Smart Document',
       'value': encryptedData,
       'recordId': guid,
-      'opt1': '',
+      'opt1': opt1,
       'opt2': '',
       'opt3': '',
     }),
@@ -290,7 +290,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     let readingFileName = (cartridgeType !== 'Organization' &&
       cartridgeType !== 'Personal' &&
       cartridgeType !== 'Encrypt' &&
-      cartridgeType !== 'Purchaser') ? 'CartridgeGeneric' : cartridgeType;
+      cartridgeType !== 'Purchaser' &&
+      cartridgeType !== 'Vendor') ? 'CartridgeGeneric' : cartridgeType;
 
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
     if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
@@ -333,7 +334,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted)
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString)
     }
-    if (cartridgeType && cartridgeType === 'Purchaser') {
+    if (cartridgeType && (cartridgeType === 'Purchaser' || cartridgeType === 'Vendor')) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
@@ -391,7 +392,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${readingFileName}_Cartridge.pdf`
     await renameFileAsync('modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`), 'modified/' + fileName)
 
-    const encryptedData = await registerIdentity(fileName, guid);
+    const encryptedData = await registerIdentity(fileName, guid, cartridgeType && cartridgeType === 'Vendor' ? guid : '');
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
