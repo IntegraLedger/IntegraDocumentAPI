@@ -292,7 +292,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       cartridgeType !== 'Encrypt' &&
       cartridgeType !== 'Purchaser' &&
       cartridgeType !== 'Vendor' &&
-      cartridgeType !== 'VendorContract') ? 'CartridgeGeneric' : cartridgeType;
+      cartridgeType !== 'VendorContract' &&
+      cartridgeType !== 'PurchaseOrder') ? 'CartridgeGeneric' : cartridgeType;
 
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
     if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
