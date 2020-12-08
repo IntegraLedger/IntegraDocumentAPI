@@ -293,7 +293,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       cartridgeType !== 'Purchaser' &&
       cartridgeType !== 'Vendor' &&
       cartridgeType !== 'VendorContract' &&
-      cartridgeType !== 'PurchaseOrder') ? 'CartridgeGeneric' : cartridgeType;
+      cartridgeType !== 'PurchaseOrder' &&
+      cartridgeType !== 'Invoice') ? 'CartridgeGeneric' : cartridgeType;
 
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
     if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
@@ -428,7 +429,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
         if (err) console.log(err)
       })
   } catch (err) {
-    res.send(err)
+    res.status(500).send(err)
   }
 })
 
