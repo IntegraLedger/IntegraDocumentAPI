@@ -225,7 +225,7 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
       const info = pdfDoc.info();
-      result = {result: info, creationDate: responseJson.data[0].Record.creationDate}
+      result = {result: info, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate}
     } else {
       result = {result: false}
     }
@@ -743,10 +743,10 @@ app.get('/QRVerify/:guid', async (req, res) => {
     const result = await response.json()
     if (result.exists) {
       res.render('success', {
-        identityId: result.data[0].Record.identityId,
-        value: result.data[0].Record.value,
-        metaData: result.data[0].Record.metaData,
-        creationDate: moment(result.data[0].Record.creationDate).format('LLL'),
+        identityId: result.data[result.data.length - 1].Record.identityId,
+        value: result.data[result.data.length - 1].Record.value,
+        metaData: result.data[result.data.length - 1].Record.metaData,
+        creationDate: moment(result.data[result.data.length - 1].Record.creationDate).format('LLL'),
       })
     } else {
       res.render('failure')
@@ -799,7 +799,7 @@ app.get('/publicKey/:id', async (req, res) => {
     if (responseJson.exists) {
       res.status(200).json({
         exists: true,
-        publicKey: responseJson.data[0].Record.keyValue
+        publicKey: responseJson.data[responseJson.data - 1].Record.keyValue
       });
     } else {
       res.status(200).json({
