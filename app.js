@@ -5,6 +5,10 @@ const cors = require('cors')
 const fetch = require('node-fetch')
 const crypto = require('crypto')
 const algorithm = 'aes-256-cbc';
+const unzipper = require('unzipper')
+const zipdir = require('zip-dir');
+const parser = require('xml2json');
+
 const fs = require('fs')
 const http = require('http');
 const https = require('https');
@@ -234,6 +238,80 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
     })
     res.send(result)
 
+  } catch (err) {
+    res.send(err)
+  }
+})
+
+/**
+ * @swagger
+ * path:
+ *  /analyzeDocx/:
+ *    post:
+ *      summary: Accept Docx file, verify it and return meta data if authenticated
+ *      description: Accept Docx file, verify it and return meta data if authenticated
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                file:
+ *                  type: file
+ *      responses:
+ *        "200":
+ *          description: Analyze docx file meta data
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  result:
+ *                    type: boolean
+ *                  creationDate:
+ *                    type: string
+ */
+
+app.post('/analyzeDocx', upload.single('file'), async (req, res) => {
+  try {
+    const fileData = await readFileAsync(req.file.path)
+    const encryptedData = crypto.createHash('sha256')
+      .update(fileData)
+      .digest('hex')
+    const responseJson = await getValue(encryptedData)
+    let result = {}
+    if (responseJson.exists) {
+      // Unzip docx file
+      const directory = await unzipper.Open.file(req.file.path)
+      await directory.extract({path: 'modified/unzipped'})
+
+      const files = fs.readdirSync('modified/unzipped/customXml');
+      const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
+
+      const a = fs.readFileSync(`modified/unzipped/customXml/item${itemFiles.length}.xml`).toString()
+      const json = parser.toJson(a, { object: true });
+      const meta = {}
+      if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
+        json.Session.Variable.reduce((acc, cur) => {
+          acc[cur.Name] = cur.Value;
+          return acc;
+        }, meta)
+      }
+
+      fs.rmdir('modified/unzipped', { recursive: true }, (err) => {
+        if (err) console.log(err)
+      })
+      result = {result: meta, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate}
+    } else {
+      result = {result: false}
+    }
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.log(err)
+    })
+
+    res.send(result)
   } catch (err) {
     res.send(err)
   }
