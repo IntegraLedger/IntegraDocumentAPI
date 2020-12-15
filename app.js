@@ -313,7 +313,7 @@ app.post('/analyzeDocx', upload.single('file'), async (req, res) => {
 
     res.send(result)
   } catch (err) {
-    res.send(err)
+    res.status(500).send(err)
   }
 })
 
