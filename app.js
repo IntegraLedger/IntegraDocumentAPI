@@ -877,7 +877,7 @@ app.get('/publicKey/:id', async (req, res) => {
     if (responseJson.exists) {
       res.status(200).json({
         exists: true,
-        publicKey: responseJson.data[responseJson.data - 1].Record.keyValue
+        publicKey: responseJson.data[responseJson.data.length - 1].Record.keyValue
       });
     } else {
       res.status(200).json({
