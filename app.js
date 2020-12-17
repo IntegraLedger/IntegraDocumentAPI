@@ -294,7 +294,7 @@ app.post('/analyzeDocx', upload.single('file'), async (req, res) => {
       const json = parser.toJson(a, { object: true });
       const meta = {}
       if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
-        json.Session.Variable.reduce((acc, cur) => {
+        json.Session.Variable && json.Session.Variable.reduce((acc, cur) => {
           acc[cur.Name] = cur.Value;
           return acc;
         }, meta)
