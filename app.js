@@ -8,7 +8,15 @@ const algorithm = 'aes-256-cbc';
 const unzipper = require('unzipper')
 const zipdir = require('zip-dir');
 const parser = require('xml2json');
-
+const js2xmlparser = require("js2xmlparser");
+const DocxMerger = require('docx-merger');
+const {
+  Document,
+  HorizontalPositionAlign,
+  Media,
+  Packer,
+  Paragraph
+} = require("docx");
 const fs = require('fs')
 const http = require('http');
 const https = require('https');
@@ -560,66 +568,133 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     doc.render()
     const docData = doc.getZip().generate({ type: 'nodebuffer' })
 
-    // Convert word document to pdf
-    const pdfData = await libreConvertAsync(docData, '.pdf', undefined)
-    fs.writeFileSync(req.file.path, pdfData)
+    fs.writeFileSync(`modified/source.docx`, docData);
 
-    // Create pdf writer
-    const writer = hummus.createWriterToModify(req.file.path, {
-      modifiedFilePath: 'modified/' + req.file.filename
-    })
-    const reader = hummus.createReader(req.file.path)
-
-    // Add meta data
-    const infoDictionary = writer.getDocumentContext().getInfoDictionary()
-    for (const key of Object.keys(meta)) {
-      infoDictionary.addAdditionalInfoEntry(key, meta[key])
-    }
-    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
-    infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
     const guid = uuidv1()
-    infoDictionary.addAdditionalInfoEntry('id', guid)
-    if (master_id)
-      infoDictionary.addAdditionalInfoEntry('master_id', master_id)
 
-    // Add QR Code into first page
+    // Add QR Code into last page
     await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
-    const pageBox = reader.parsePage(0).getMediaBox()
-    const pageWidth = pageBox[2] - pageBox[0]
-    const pageHeight = pageBox[3] - pageBox[1]
-    const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
-    const ctx = pageModifier.startContext().getContext()
-    ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
-      transformation: {
-        width: 100,
-        height: 100,
-        fit: 'always'
-      }
-    })
+    const document = new Document();
+    const image1 = Media.addImage(document, fs.readFileSync('qr.png'), 150, 150, {
+      floating: {
+        horizontalPosition: {
+          align: HorizontalPositionAlign.CENTER,
+        },
+        verticalPosition: {
+          offset: 0,
+        },
+        behindDocument: true
+      },
+    });
 
-    if (meta.organization_logo) {
-      const base64Data = meta.organization_logo.split(',')[1]
-      await fs.writeFileSync("qr-logo.png", base64Data, {
-        encoding: "base64"
-      });
+    const image2 = Media.addImage(document, fs.readFileSync('integra-qr.png'), 50, 50, {
+      floating: {
+        horizontalPosition: {
+          align: HorizontalPositionAlign.CENTER,
+        },
+        verticalPosition: {
+          offset: 540000,
+        },
+        behindDocument: false,
+      },
+    });
+
+    document.addSection({
+      children: [
+        new Paragraph(image1),
+        new Paragraph(image2),
+      ],
+    });
+    const qrdata = await Packer.toBuffer(document)
+    fs.writeFileSync("modified/qr.docx", qrdata);
+
+    var file1 = fs.readFileSync(`modified/source.docx`, 'binary');
+    var file2 = fs.readFileSync('modified/qr.docx', 'binary');
+    var docx = new DocxMerger({},[file1,file2]);
+    docx.save('nodebuffer',function (data) {
+      fs.writeFileSync("modified/filled.docx", data);
+    });
+
+    /**
+     * Unzip docx file
+     */
+    const directory = await unzipper.Open.file('modified/filled.docx')
+    await directory.extract({path: 'modified/unzipped'})
+
+    /**
+     * Create new item.mxl
+     */
+    const files = fs.readdirSync('modified/unzipped/customXml');
+    const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
+
+    const obj = {
+      "@": {
+        xmlns: "http://schemas.business-integrity.com/dealbuilder/2006/answers"
+      },
+      "Variable": []
+    };
+    Object.keys(meta).forEach(key => {
+      obj.Variable.push({
+        "@": {
+          "Name": key
+        },
+        "Value": meta[key]
+      })
+    })
+    obj.Variable.push({
+      "@": {
+        "Name": "infoJSON"
+      },
+      "Value": JSON.stringify(meta)
+    })
+    obj.Variable.push({
+      "@": {
+        "Name": "formJSON"
+      },
+      "Value": data_form
+    })
+    obj.Variable.push({
+      "@": {
+        "Name": "id"
+      },
+      "Value": guid
+    })
+    if (master_id) {
+      obj.Variable.push({
+        "@": {
+          "Name": "master_id"
+        },
+        "Value": master_id
+      })
     }
 
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
-      transformation: {
-        width: 30,
-        height: 30,
-        fit: 'always'
-      }
-    })
-    pageModifier.endContext().writePage()
-    pageModifier
-      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
-      .endContext().writePage()
-    writer.end()
+    const xml = js2xmlparser.parse("Session", obj);
+    fs.writeFileSync(`modified/unzipped/customXml/item${itemFiles.length + 1}.xml`, xml);
 
-    // Generate file name (Attach 'SmartDoc' to original filename)
-    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
-    await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
+    /**
+     * Zip
+     */
+
+    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 5) + '_SmartDoc.docx'
+    var buffer = await zipdir('modified/unzipped');
+    fs.writeFileSync(`modified/${fileName}`, buffer);
+
+    fs.rmdir('modified/unzipped', { recursive: true }, (err) => {
+      if (err) console.log(err)
+    })
+    fs.unlink('modified/qr.docx', (err) => {
+      if (err) console.log(err)
+    })
+    fs.unlink('modified/source.docx', (err) => {
+      if (err) console.log(err)
+    })
+    fs.unlink('modified/filled.docx', (err) => {
+      if (err) console.log(err)
+    })
+    if (req.file)
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.log(err)
+      })
 
     const encryptedData = await registerIdentity(fileName, guid);
 
@@ -634,11 +709,9 @@ app.post('/doc', upload.single('file'), async (req, res) => {
         if (err) console.log(err)
       })
     })
-    fs.unlink(req.file.path, (err) => {
-      if (err) console.log(err)
-    })
   } catch (err) {
-    console.log('err')
+    console.log('err', err)
+    res.status(err.statusCode || 404).send(err)
   }
 })
 
