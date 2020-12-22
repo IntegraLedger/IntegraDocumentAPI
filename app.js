@@ -568,6 +568,105 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     doc.render()
     const docData = doc.getZip().generate({ type: 'nodebuffer' })
 
+    // Convert word document to pdf
+    const pdfData = await libreConvertAsync(docData, '.pdf', undefined)
+    fs.writeFileSync(req.file.path, pdfData)
+
+    // Create pdf writer
+    const writer = hummus.createWriterToModify(req.file.path, {
+      modifiedFilePath: 'modified/' + req.file.filename
+    })
+    const reader = hummus.createReader(req.file.path)
+
+    // Add meta data
+    const infoDictionary = writer.getDocumentContext().getInfoDictionary()
+    for (const key of Object.keys(meta)) {
+      infoDictionary.addAdditionalInfoEntry(key, meta[key])
+    }
+    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
+    infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
+    const guid = uuidv1()
+    infoDictionary.addAdditionalInfoEntry('id', guid)
+    if (master_id)
+      infoDictionary.addAdditionalInfoEntry('master_id', master_id)
+
+    // Add QR Code into first page
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
+    const pageBox = reader.parsePage(0).getMediaBox()
+    const pageWidth = pageBox[2] - pageBox[0]
+    const pageHeight = pageBox[3] - pageBox[1]
+    const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
+    const ctx = pageModifier.startContext().getContext()
+    ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
+      transformation: {
+        width: 100,
+        height: 100,
+        fit: 'always'
+      }
+    })
+
+    if (meta.organization_logo) {
+      const base64Data = meta.organization_logo.split(',')[1]
+      await fs.writeFileSync("qr-logo.png", base64Data, {
+        encoding: "base64"
+      });
+    }
+
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
+      transformation: {
+        width: 30,
+        height: 30,
+        fit: 'always'
+      }
+    })
+    pageModifier.endContext().writePage()
+    pageModifier
+      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .endContext().writePage()
+    writer.end()
+
+    // Generate file name (Attach 'SmartDoc' to original filename)
+    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
+    await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
+
+    const encryptedData = await registerIdentity(fileName, guid);
+
+    // Attach file name to response header
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
+    res.setHeader('file-name', fileName)
+    res.setHeader('id', guid)
+    res.setHeader('hash', encryptedData)
+
+    res.download('modified/' + fileName, fileName, (err) => {
+      fs.unlink(`modified/${fileName}`, (err) => {
+        if (err) console.log(err)
+      })
+    })
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.log(err)
+    })
+  } catch (err) {
+    console.log(err)
+    res.status(err.statusCode || 404).send(err)
+  }
+})
+
+app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
+  try {
+    const { master_id, meta_form, data_form } = req.body;
+
+    const meta = JSON.parse(meta_form);
+
+    // Fill merge fields
+    const content = fs.readFileSync(req.file.path, 'binary')
+    const zip = new PizZip(content)
+    const doc = new Docxtemplater()
+
+    doc.loadZip(zip)
+    doc.setData(meta)
+    doc.render()
+    const docData = doc.getZip().generate({ type: 'nodebuffer' })
+
     fs.writeFileSync(`modified/source.docx`, docData);
 
     const guid = uuidv1()
@@ -624,6 +723,10 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     /**
      * Create new item.mxl
      */
+    if (!fs.existsSync("modified/unzipped/customXml")){
+      fs.mkdirSync("modified/unzipped/customXml");
+    }
+
     const files = fs.readdirSync('modified/unzipped/customXml');
     const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
 
