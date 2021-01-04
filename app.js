@@ -15,7 +15,8 @@ const {
   HorizontalPositionAlign,
   Media,
   Packer,
-  Paragraph
+  Paragraph,
+  VerticalPositionAlign,
 } = require("docx");
 const fs = require('fs')
 const http = require('http');
@@ -680,7 +681,7 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
           align: HorizontalPositionAlign.CENTER,
         },
         verticalPosition: {
-          offset: 0,
+          align: VerticalPositionAlign.CENTER,
         },
         behindDocument: true
       },
@@ -692,7 +693,8 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
           align: HorizontalPositionAlign.CENTER,
         },
         verticalPosition: {
-          offset: 540000,
+          // offset: 540000,
+          align: VerticalPositionAlign.CENTER,
         },
         behindDocument: false,
       },
@@ -707,8 +709,8 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
     const qrdata = await Packer.toBuffer(document)
     fs.writeFileSync("modified/qr.docx", qrdata);
 
-    var file1 = fs.readFileSync(`modified/source.docx`, 'binary');
-    var file2 = fs.readFileSync('modified/qr.docx', 'binary');
+    var file1 = fs.readFileSync('modified/qr.docx', 'binary');
+    var file2 = fs.readFileSync(`modified/source.docx`, 'binary');
     var docx = new DocxMerger({},[file1,file2]);
     docx.save('nodebuffer',function (data) {
       fs.writeFileSync("modified/filled.docx", data);
