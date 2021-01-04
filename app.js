@@ -652,6 +652,38 @@ app.post('/doc', upload.single('file'), async (req, res) => {
   }
 })
 
+/**
+ * @swagger
+ * path:
+ *  /docxSmartDoc/:
+ *    post:
+ *      description: Create signed docx format smart document with adding metadata, filling form fields of docx file and adding QR code
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                master_id:
+ *                  type: string
+ *                  description: master ID of the smart document
+ *                meta_form:
+ *                  type: string
+ *                  required: true
+ *                  description: metadata for the smart document.
+ *                data_form:
+ *                  type: string
+ *                  required: true
+ *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
+ *                file:
+ *                  type: file
+ *                  description: File to put metadata.
+ *      responses:
+ *        "200":
+ *          description: return signed docx file
+ */
 app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
   try {
     const { master_id, meta_form, data_form } = req.body;
