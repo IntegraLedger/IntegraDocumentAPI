@@ -9,7 +9,7 @@ const unzipper = require('unzipper')
 const zipdir = require('zip-dir');
 const parser = require('xml2json');
 const js2xmlparser = require("js2xmlparser");
-const DocxMerger = require('docx-merger');
+const CloudmersiveConvertApiClient = require('cloudmersive-convert-api-client');
 const {
   Document,
   HorizontalPositionAlign,
@@ -684,6 +684,25 @@ app.post('/doc', upload.single('file'), async (req, res) => {
  *        "200":
  *          description: return signed docx file
  */
+
+const mergeDocx = (inputFile1, inputFile2) => {
+  return new Promise((resolve) => {
+    const defaultClient = CloudmersiveConvertApiClient.ApiClient.instance;
+    const Apikey = defaultClient.authentications['Apikey'];
+    Apikey.apiKey = process.env.CLOUDMERSIVE_KEY;
+    Apikey.apiKeyPrefix = null;
+    const apiInstance = new CloudmersiveConvertApiClient.MergeDocumentApi();
+    const callback = function(error, data, response) {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(data);
+      }
+    };
+    apiInstance.mergeDocumentDocx(inputFile1, inputFile2, callback);
+  })
+}
+
 app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
   try {
     const { master_id, meta_form, data_form } = req.body;
@@ -741,12 +760,10 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
     const qrdata = await Packer.toBuffer(document)
     fs.writeFileSync("modified/qr.docx", qrdata);
 
-    var file1 = fs.readFileSync('modified/qr.docx', 'binary');
-    var file2 = fs.readFileSync(`modified/source.docx`, 'binary');
-    var docx = new DocxMerger({},[file1,file2]);
-    docx.save('nodebuffer',function (data) {
-      fs.writeFileSync("modified/filled.docx", data);
-    });
+    const inputFile1 = fs.readFileSync('modified/qr.docx');
+    const inputFile2 = fs.readFileSync('modified/source.docx');
+    const mergedData = await mergeDocx(inputFile1, inputFile2);
+    fs.writeFileSync("modified/filled.docx", mergedData);
 
     /**
      * Unzip docx file
