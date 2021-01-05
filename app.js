@@ -648,7 +648,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     })
   } catch (err) {
     console.log(err)
-    res.status(err.statusCode || 404).send(err)
+    res.status(err.statusCode || 500).send(err)
   }
 })
 
@@ -848,7 +848,7 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
     })
   } catch (err) {
     console.log('err', err)
-    res.status(err.statusCode || 404).send(err)
+    res.status(err.statusCode || 500).send(err)
   }
 })
 
@@ -909,7 +909,7 @@ app.delete('/docassemble', async (req, res) => {
       success: true,
     });
   } catch (err) {
-    res.status(err.statusCode || 404).send(err)
+    res.status(err.statusCode || 500).send(err)
   }
 })
 
