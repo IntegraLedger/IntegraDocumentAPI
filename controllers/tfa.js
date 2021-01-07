@@ -2,7 +2,7 @@ const tfaEmail = require('../models/tfa_emails');
 const tfaPhone = require('../models/tfa_phones');
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-const client = require('twilio')(process.env.SENDGRID_API_KEY.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 exports.sendEmailCode = (req, res) => {
   const { email } = req.body;

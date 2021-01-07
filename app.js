@@ -686,7 +686,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
  */
 
 const mergeDocx = (inputFile1, inputFile2) => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const defaultClient = CloudmersiveConvertApiClient.ApiClient.instance;
     const Apikey = defaultClient.authentications['Apikey'];
     Apikey.apiKey = process.env.CLOUDMERSIVE_KEY;
