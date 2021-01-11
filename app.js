@@ -703,14 +703,14 @@ const mergeDocx = (inputFile1, inputFile2) => {
   })
 }
 
-app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
+app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: 'logo', maxCount: 1}]), async (req, res) => {
   try {
-    const { master_id, meta_form, data_form } = req.body;
+    const { master_id, meta_form, data_form, logo_url } = req.body;
 
     const meta = JSON.parse(meta_form);
 
     // Fill merge fields
-    const content = fs.readFileSync(req.file.path, 'binary')
+    const content = fs.readFileSync(req.files['file'][0].path, 'binary')
     const zip = new PizZip(content)
     const doc = new Docxtemplater()
 
@@ -738,7 +738,17 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
       },
     });
 
-    const image2 = Media.addImage(document, fs.readFileSync('integra-qr.png'), 50, 50, {
+    let logoimage = "integra-qr.png";
+    if (logo_url) {
+      await doRequest(logo_url, "qr-logo.png")
+      logoimage = "qr-logo.png"
+    }
+    if (req.files['logo']) {
+      const logoFile = req.files['logo'][0];
+      logoimage = logoFile.path;
+    }
+
+    const image2 = Media.addImage(document, fs.readFileSync(logoimage), 50, 50, {
       floating: {
         horizontalPosition: {
           align: HorizontalPositionAlign.CENTER,
@@ -877,8 +887,7 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
     /**
      * Zip
      */
-
-    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 5) + '_SmartDoc.docx'
+    const fileName = req.files['file'][0].originalname.substring(0, req.files['file'][0].originalname.length - 5) + '_SmartDoc.docx'
     var buffer = await zipdir('modified/unzipped');
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
@@ -894,10 +903,16 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
     fs.unlink('modified/filled.docx', (err) => {
       if (err) console.log(err)
     })
-    if (req.file)
-      fs.unlink(req.file.path, (err) => {
+    if (req.files['file'])
+      fs.unlink(req.files['file'][0].path, (err) => {
         if (err) console.log(err)
       })
+
+    if (req.files['logo']) {
+      fs.unlink(req.files['logo'][0].path, (err) => {
+        if (err) console.log(err)
+      })
+    }
 
     const encryptedData = await registerIdentity(fileName, guid);
 
