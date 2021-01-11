@@ -677,6 +677,14 @@ app.post('/doc', upload.single('file'), async (req, res) => {
  *                  type: string
  *                  required: true
  *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
+ *                logo_url:
+ *                  type: string
+ *                  required: false
+ *                  description: url of the logo image for qr code section.
+ *                logo:
+ *                  type: file
+ *                  required: false
+ *                  description: File of the logo image for qr code section.
  *                file:
  *                  type: file
  *                  description: File to put metadata.
