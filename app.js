@@ -826,6 +826,55 @@ app.post('/docxSmartDoc', upload.single('file'), async (req, res) => {
     fs.writeFileSync(`modified/unzipped/customXml/item${itemFiles.length + 1}.xml`, xml);
 
     /**
+     * Create docProps/custom.xml
+     */
+    if (!fs.existsSync("modified/unzipped/docProps/custom.xml")){
+      const obj = {
+        "@": {
+          xmlns: "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
+          "xmlns:vt": "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
+        },
+        "property": []
+      };
+      Object.keys(meta).forEach((key, index) => {
+        obj.property.push({
+          "@": {
+            "xmlns": "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
+            "fmtid": "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}",
+            "pid": `${index + 2}`,
+            "name": key
+          },
+          "vt:lpwstr": {
+            "@": {
+              "xmlns:vt": "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
+            },
+            "#": meta[key]
+          }
+        })
+      })
+      const xml = js2xmlparser.parse("Properties", obj);
+      fs.writeFileSync("modified/unzipped/docProps/custom.xml", xml);
+
+      // Update [Content_Types].xml
+      const a = fs.readFileSync("modified/unzipped/[Content_Types].xml").toString();
+      const json = parser.toJson(a, { object: true, reversible: true });
+      json.Types.Override.push({
+        PartName: "/docProps/custom.xml",
+        ContentType: "application/vnd.openxmlformats-officedocument.custom-properties+xml"
+      });
+      fs.writeFileSync("modified/unzipped/[Content_Types].xml", `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
+
+      const rels = fs.readFileSync("modified/unzipped/_rels/.rels").toString();
+      const relsJson = parser.toJson(rels, { object: true, reversible: true });
+      relsJson.Relationships.Relationship.push({
+        Type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties",
+        Target: "/docProps/custom.xml",
+        Id: `rId${relsJson.Relationships.Relationship.length + 1}`
+      });
+      fs.writeFileSync("modified/unzipped/_rels/.rels", `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
+    }
+
+    /**
      * Zip
      */
 
