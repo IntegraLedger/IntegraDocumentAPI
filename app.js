@@ -26,7 +26,7 @@ const azure = require('azure-storage');
 const { promisify } = require('util');
 const renameFileAsync = promisify(fs.rename);
 const readFileAsync = promisify(fs.readFile);
-const multer  = require('multer');
+const multer = require('multer');
 const upload = multer({
   dest: 'uploads/',
   limits: { fieldSize: 25 * 1024 * 1024 }
@@ -58,7 +58,7 @@ const swaggerUi = require("swagger-ui-express");
 
 const app = express();
 app.use(cors());
-app.use( bodyParser.json({limit: '25mb'}) );
+app.use(bodyParser.json({ limit: '25mb' }));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('public'));
 app.set('views', __dirname + '/views');
@@ -89,14 +89,14 @@ const getValue = async data => {
   const response = await fetch(`${BLOCKCHAIN_API_URL}/valueexists/` + data, {
     method: 'get',
     headers: {
-        'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+      'Content-Type': 'application/json',
+      'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
     },
   });
   return await response.json();
 }
 
-const encryptStringWithRsaPrivateKey = function(toEncrypt, privateKey) {
+const encryptStringWithRsaPrivateKey = function (toEncrypt, privateKey) {
   const sign = crypto.createSign('SHA256');
   sign.update(toEncrypt);
   sign.end();
@@ -242,9 +242,9 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
       const info = pdfDoc.info();
-      result = {result: info, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate};
+      result = { result: info, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate };
     } else {
-      result = {result: false};
+      result = { result: false };
     }
     fs.unlink(req.file.path, (err) => {
       if (err) console.log(err);
@@ -298,7 +298,7 @@ app.post('/analyzeDocx', upload.single('file'), async (req, res) => {
     if (responseJson.exists) {
       // Unzip docx file
       const directory = await unzipper.Open.file(req.file.path);
-      await directory.extract({path: 'modified/unzipped'});
+      await directory.extract({ path: 'modified/unzipped' });
 
       const files = fs.readdirSync('modified/unzipped/customXml');
       const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
@@ -316,9 +316,9 @@ app.post('/analyzeDocx', upload.single('file'), async (req, res) => {
       fs.rmdir('modified/unzipped', { recursive: true }, (err) => {
         if (err) console.log(err);
       })
-      result = {result: meta, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate}
+      result = { result: meta, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate }
     } else {
-      result = {result: false};
+      result = { result: false };
     }
     fs.unlink(req.file.path, (err) => {
       if (err) console.log(err);
@@ -414,14 +414,14 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
-      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"});
-      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"});
+      const pubkeyString = publicKey.export({ type: "pkcs1", format: "pem" });
+      const privkeyString = privateKey.export({ type: "pkcs1", format: "pem" });
 
       const registerKeyRes = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
-          method: 'post',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        method: 'post',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       // const json = await registerKeyRes.json()
       const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey);
@@ -432,8 +432,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
-      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"});
-      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"});
+      const pubkeyString = publicKey.export({ type: "pkcs1", format: "pem" });
+      const privkeyString = privateKey.export({ type: "pkcs1", format: "pem" });
 
       await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
         method: 'post',
@@ -469,7 +469,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       });
     }
 
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, req.file && meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, req.file && meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
       transformation: {
         width: 30,
         height: 30,
@@ -617,7 +617,7 @@ app.post('/doc', upload.single('file'), async (req, res) => {
       });
     }
 
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo? 'qr-logo.png' : 'integra-qr.png', {
+    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
       transformation: {
         width: 30,
         height: 30,
@@ -704,7 +704,7 @@ const mergeDocx = (inputFile1, inputFile2) => {
     Apikey.apiKey = process.env.CLOUDMERSIVE_KEY;
     Apikey.apiKeyPrefix = null;
     const apiInstance = new CloudmersiveConvertApiClient.MergeDocumentApi();
-    const callback = function(error, data, response) {
+    const callback = function (error, data, response) {
       if (error) {
         reject(error);
       } else {
@@ -715,7 +715,7 @@ const mergeDocx = (inputFile1, inputFile2) => {
   })
 }
 
-app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: 'logo', maxCount: 1}]), async (req, res) => {
+app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1 }, { name: 'logo', maxCount: 1 }]), async (req, res) => {
   try {
     const { master_id, meta_form, data_form, logo_url } = req.body;
 
@@ -791,12 +791,12 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
      * Unzip docx file
      */
     const directory = await unzipper.Open.file('modified/filled.docx');
-    await directory.extract({path: 'modified/unzipped'});
+    await directory.extract({ path: 'modified/unzipped' });
 
     /**
      * Create new item.mxl
      */
-    if (!fs.existsSync("modified/unzipped/customXml")){
+    if (!fs.existsSync("modified/unzipped/customXml")) {
       fs.mkdirSync("modified/unzipped/customXml");
     }
 
@@ -850,7 +850,7 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
     /**
      * Create docProps/custom.xml
      */
-    if (!fs.existsSync("modified/unzipped/docProps/custom.xml")){
+    if (!fs.existsSync("modified/unzipped/docProps/custom.xml")) {
       const obj = {
         "@": {
           xmlns: "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
@@ -948,18 +948,18 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
 const doRequest = (url, filename) => {
   const proto = url.startsWith('https') ? https : http;
   return new Promise((resolve, reject) => {
-    const file  = fs.createWriteStream(filename)
+    const file = fs.createWriteStream(filename);
     const request = proto.get(url, (response) => {
       response.pipe(file);
-      file.on("finish", function() {
+      file.on("finish", function () {
         file.close(() => {
-         resolve(filename);
+          resolve(filename);
         });
-       });
-       file.on("error", function(err) {
+      });
+      file.on("error", function (err) {
         fs.unlink(filename);
         reject(err);
-       });
+      });
     });
 
   });
@@ -968,7 +968,7 @@ const doRequest = (url, filename) => {
 const uploadFileToAzure = (fileName) => {
   return new Promise((resolve, reject) => {
     const blobService = azure.createBlobService();
-    blobService.createBlockBlobFromLocalFile('docassemble', fileName, `modified/${fileName}`, function(error, result, response) {
+    blobService.createBlockBlobFromLocalFile('docassemble', fileName, `modified/${fileName}`, function (error, result, response) {
       var containerName = 'docassemble';
       var hostName = 'https://doccreationcenter.blob.core.windows.net';
       const url = blobService.getUrl(containerName, fileName, null, hostName);
@@ -985,13 +985,13 @@ const uploadFileToAzure = (fileName) => {
 const deleteAzureBlob = (fileName) => {
   return new Promise((resolve, reject) => {
     const blobService = azure.createBlobService();
-    blobService.deleteBlob('docassemble', fileName, function(error, response) {
+    blobService.deleteBlob('docassemble', fileName, function (error, response) {
       if (!error) {
         resolve(true);
       } else {
         reject(error);
       }
-    })
+    });
   });
 }
 
@@ -1117,8 +1117,8 @@ app.get('/QRVerify/:guid', async (req, res) => {
     const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
       method: 'get',
       headers: {
-          'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
       },
     });
     const result = await response.json();
@@ -1401,7 +1401,7 @@ David`;
     };
 
     await sgMail.send(msg);
-    res.send({success: true});
+    res.send({ success: true });
     if (req.file)
       fs.unlink(req.file.path, (err) => {
         if (err) console.log(err);
@@ -1414,48 +1414,48 @@ David`;
 app.post('/readFile', upload.single('file'), (req, res) => {
   var filecontent = "";
   fs.readFile(req.file.path, async (err, data) => {
-      let filePath = req.file.path;
-      let filebuffer = data;
-      let filename = req.file.originalname;
-      var fileextension = filereader.getFileExtension(filename);
-      switch (fileextension) {
-        case '.pdf':
-          new PdfReader().parseBuffer(filebuffer, function (err, item) {
-              if (err) console.log(err);
-              else if (!item) console.log(item);
-              else if (item.text) {
-                  filecontent = filecontent + " " + item.text;
-              }
+    let filePath = req.file.path;
+    let filebuffer = data;
+    let filename = req.file.originalname;
+    var fileextension = filereader.getFileExtension(filename);
+    switch (fileextension) {
+      case '.pdf':
+        new PdfReader().parseBuffer(filebuffer, function (err, item) {
+          if (err) console.log(err);
+          else if (!item) console.log(item);
+          else if (item.text) {
+            filecontent = filecontent + " " + item.text;
+          }
+        });
+        break;
+      case '.doc':
+      case '.docx':
+        const docRes = await filereader.extract(filePath);
+        filecontent = docRes;
+        break;
+      case '.xlsx':
+      case '.xls':
+        var result = {};
+        data = new Uint8Array(data);
+        var workbook = XLSX.read(data, {
+          type: 'array'
+        });
+        workbook.SheetNames.forEach(function (sheetName) {
+          var roa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+            header: 1
           });
-          break;
-        case '.doc':
-        case '.docx':
-          const docRes = await filereader.extract(filePath);
-          filecontent = docRes;
-          break;
-        case '.xlsx':
-        case '.xls':
-          var result = {};
-          data = new Uint8Array(data);
-          var workbook = XLSX.read(data, {
-              type: 'array'
-          });
-          workbook.SheetNames.forEach(function (sheetName) {
-              var roa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
-                  header: 1
-              });
-              if (roa.length) result[sheetName] = roa;
-          });
-          filecontent = JSON.stringify(result);
-          break;
-        case '.txt':
-        case '.csv':
-          filecontent = data;
-          break;
-        default:
-          filecontent = filename;
-      }
-      res.send(filecontent);
+          if (roa.length) result[sheetName] = roa;
+        });
+        filecontent = JSON.stringify(result);
+        break;
+      case '.txt':
+      case '.csv':
+        filecontent = data;
+        break;
+      default:
+        filecontent = filename;
+    }
+    res.send(filecontent);
   });
 });
 
@@ -1475,7 +1475,7 @@ app.get('/verification', async (req, res) => {
         'identity_document',
       ]
     },
-      function(err, response) {
+      function (err, response) {
         res.send({ id: response.id, url: response.next_action.redirect_to_url });
       }
     );
@@ -1499,7 +1499,7 @@ app.get('/verification/:id', async (req, res) => {
 
     new resource(stripe).request({
     },
-      function(err, response) {
+      function (err, response) {
         res.send(response);
       }
     );
