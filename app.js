@@ -1,11 +1,11 @@
 require('dotenv').config();
-const express = require('express')
-const QRCode = require('qrcode')
-const cors = require('cors')
-const fetch = require('node-fetch')
-const crypto = require('crypto')
+const express = require('express');
+const QRCode = require('qrcode');
+const cors = require('cors');
+const fetch = require('node-fetch');
+const crypto = require('crypto');
 const algorithm = 'aes-256-cbc';
-const unzipper = require('unzipper')
+const unzipper = require('unzipper');
 const zipdir = require('zip-dir');
 const parser = require('xml2json');
 const js2xmlparser = require("js2xmlparser");
@@ -18,35 +18,35 @@ const {
   Paragraph,
   VerticalPositionAlign,
 } = require("docx");
-const fs = require('fs')
+const fs = require('fs');
 const http = require('http');
 const https = require('https');
 const azure = require('azure-storage');
 
-const { promisify } = require('util')
-const renameFileAsync = promisify(fs.rename)
-const readFileAsync = promisify(fs.readFile)
-const multer  = require('multer')
+const { promisify } = require('util');
+const renameFileAsync = promisify(fs.rename);
+const readFileAsync = promisify(fs.readFile);
+const multer  = require('multer');
 const upload = multer({
   dest: 'uploads/',
   limits: { fieldSize: 25 * 1024 * 1024 }
-})
-const HummusRecipe = require('hummus-recipe')
+});
+const HummusRecipe = require('hummus-recipe');
 const hummus = require('hummus'),
-  fillForm = require('./pdf-form-fill').fillForm
-const PizZip = require('pizzip')
-const Docxtemplater = require('docxtemplater')
-const libre = require('libreoffice-convert')
-const libreConvertAsync = promisify(libre.convert)
+  fillForm = require('./pdf-form-fill').fillForm;
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
+const libre = require('libreoffice-convert');
+const libreConvertAsync = promisify(libre.convert);
 
 var PdfReader = require("pdfreader").PdfReader;
 var filereader = require('./filereader');
 var XLSX = require('xlsx');
 
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-const uuidv1 = require('uuid/v1')
-const moment = require('moment')
+const uuidv1 = require('uuid/v1');
+const moment = require('moment');
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const Stripe = require('stripe');
@@ -56,12 +56,12 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 
-const app = express()
-app.use(cors())
+const app = express();
+app.use(cors());
 app.use( bodyParser.json({limit: '25mb'}) );
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.static('public'))
-app.set('views', __dirname + '/views')
+app.use(express.static('public'));
+app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 
 const BLOCKCHAIN_API_URL = process.env.NODE_ENV === 'development' ?
@@ -236,23 +236,23 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
     const fileData = await readFileAsync(req.file.path)
     const encryptedData = crypto.createHash('sha256')
       .update(fileData)
-      .digest('hex')
-    const responseJson = await getValue(encryptedData)
-    let result = {}
+      .digest('hex');
+    const responseJson = await getValue(encryptedData);
+    let result = {};
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
       const info = pdfDoc.info();
-      result = {result: info, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate}
+      result = {result: info, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate};
     } else {
-      result = {result: false}
+      result = {result: false};
     }
     fs.unlink(req.file.path, (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
-    res.send(result)
+    res.send(result);
 
   } catch (err) {
-    res.send(err)
+    res.send(err);
   }
 })
 
@@ -289,44 +289,44 @@ app.post('/analyze', upload.single('file'), async (req, res) => {
 
 app.post('/analyzeDocx', upload.single('file'), async (req, res) => {
   try {
-    const fileData = await readFileAsync(req.file.path)
+    const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256')
       .update(fileData)
-      .digest('hex')
-    const responseJson = await getValue(encryptedData)
-    let result = {}
+      .digest('hex');
+    const responseJson = await getValue(encryptedData);
+    let result = {};
     if (responseJson.exists) {
       // Unzip docx file
-      const directory = await unzipper.Open.file(req.file.path)
-      await directory.extract({path: 'modified/unzipped'})
+      const directory = await unzipper.Open.file(req.file.path);
+      await directory.extract({path: 'modified/unzipped'});
 
       const files = fs.readdirSync('modified/unzipped/customXml');
       const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
 
-      const a = fs.readFileSync(`modified/unzipped/customXml/item${itemFiles.length}.xml`).toString()
+      const a = fs.readFileSync(`modified/unzipped/customXml/item${itemFiles.length}.xml`).toString();
       const json = parser.toJson(a, { object: true });
-      const meta = {}
+      const meta = {};
       if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
         json.Session.Variable && json.Session.Variable.reduce((acc, cur) => {
           acc[cur.Name] = cur.Value;
           return acc;
-        }, meta)
+        }, meta);
       }
 
       fs.rmdir('modified/unzipped', { recursive: true }, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
       result = {result: meta, creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate}
     } else {
-      result = {result: false}
+      result = {result: false};
     }
     fs.unlink(req.file.path, (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
 
-    res.send(result)
+    res.send(result);
   } catch (err) {
-    res.status(500).send(err)
+    res.status(500).send(err);
   }
 })
 
@@ -376,8 +376,8 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
   try {
     const { master_id, cartridge_type: cartridgeType, meta_form, data_form } = req.body;
     const meta = JSON.parse(meta_form);
-    const pass_phrase = meta.pass_phrase
-    delete meta.pass_phrase
+    const pass_phrase = meta.pass_phrase;
+    delete meta.pass_phrase;
     let readingFileName = (cartridgeType !== 'Organization' &&
       cartridgeType !== 'Personal' &&
       cartridgeType !== 'Encrypt' &&
@@ -387,7 +387,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       cartridgeType !== 'PurchaseOrder' &&
       cartridgeType !== 'Invoice') ? 'CartridgeGeneric' : cartridgeType;
 
-    const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id
+    const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id;
     if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
       readingFileName = 'Personal_Private';
       if (req.query.private_id)
@@ -397,43 +397,43 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
     // Create pdf writer
     const writer = hummus.createWriterToModify(req.file ? req.file.path : `./${readingFileName}.pdf`, {
       modifiedFilePath: 'modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`)
-    })
-    const reader = hummus.createReader(req.file ? req.file.path : `./${readingFileName}.pdf`)
+    });
+    const reader = hummus.createReader(req.file ? req.file.path : `./${readingFileName}.pdf`);
     // Add meta data
-    const infoDictionary = writer.getDocumentContext().getInfoDictionary()
+    const infoDictionary = writer.getDocumentContext().getInfoDictionary();
     for (const key of Object.keys(meta)) {
-      infoDictionary.addAdditionalInfoEntry(key, meta[key])
+      infoDictionary.addAdditionalInfoEntry(key, meta[key]);
     }
-    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
-    infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
-    const guid = !isHedgePublic ? uuidv1() : req.query.private_id
-    infoDictionary.addAdditionalInfoEntry('id', guid)
+    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
+    infoDictionary.addAdditionalInfoEntry('formJSON', data_form);
+    const guid = !isHedgePublic ? uuidv1() : req.query.private_id;
+    infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id)
-      infoDictionary.addAdditionalInfoEntry('master_id', master_id)
+      infoDictionary.addAdditionalInfoEntry('master_id', master_id);
     if (cartridgeType && cartridgeType === 'Personal' && !isHedgePublic) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
-      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
-      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
+      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"});
+      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"});
 
       const registerKeyRes = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
           method: 'post',
           headers: {
             'Content-Type': 'application/json',
           },
-      })
+      });
       // const json = await registerKeyRes.json()
-      const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey)
-      infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted)
-      infoDictionary.addAdditionalInfoEntry('private_key', privkeyString)
+      const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey);
+      infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted);
+      infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
     }
     if (cartridgeType && (cartridgeType === 'Purchaser' || cartridgeType === 'Vendor')) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
-      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
-      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
+      const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"});
+      const privkeyString = privateKey.export({type: "pkcs1", format: "pem"});
 
       await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
         method: 'post',
@@ -441,29 +441,29 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
           'Content-Type': 'application/json',
         },
       })
-      infoDictionary.addAdditionalInfoEntry('private_key', privkeyString)
+      infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
     }
     // Fill form fields
     meta.id = guid;
-    fillForm(writer, meta)
+    fillForm(writer, meta);
 
     // Add QR Code into first page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
-    const pageBox = reader.parsePage(0).getMediaBox()
-    const pageWidth = pageBox[2] - pageBox[0]
-    const pageHeight = pageBox[3] - pageBox[1]
-    const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
-    const ctx = pageModifier.startContext().getContext()
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+    const pageBox = reader.parsePage(0).getMediaBox();
+    const pageWidth = pageBox[2] - pageBox[0];
+    const pageHeight = pageBox[3] - pageBox[1];
+    const pageModifier = new hummus.PDFPageModifier(writer, 0, true);
+    const ctx = pageModifier.startContext().getContext();
     ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
       transformation: {
         width: 100,
         height: 100,
         fit: 'always'
       }
-    })
+    });
 
     if (req.file && meta.organization_logo) {
-      const base64Data = meta.organization_logo.split(',')[1]
+      const base64Data = meta.organization_logo.split(',')[1];
       await fs.writeFileSync("qr-logo.png", base64Data, {
         encoding: "base64"
       });
@@ -475,21 +475,21 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
         height: 30,
         fit: 'always'
       }
-    })
-    pageModifier.endContext().writePage()
+    });
+    pageModifier.endContext().writePage();
     pageModifier
       .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
-      .endContext().writePage()
-    writer.end()
+      .endContext().writePage();
+    writer.end();
 
     // Generate file name (Attach 'SmartDoc' to original filename)
-    const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${readingFileName}_Cartridge.pdf`
-    await renameFileAsync('modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`), 'modified/' + fileName)
+    const fileName = req.file ? req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf' : `${readingFileName}_Cartridge.pdf`;
+    await renameFileAsync('modified/' + (req.file ? req.file.filename : `${readingFileName}.pdf`), 'modified/' + fileName);
 
     const encryptedData = await registerIdentity(fileName, guid, cartridgeType && cartridgeType === 'Vendor' ? guid : '');
 
     // Attach file name to response header
-    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
     let finalFileName;
     if (req.file) finalFileName = fileName;
     else {
@@ -502,25 +502,25 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       else finalFileName = `${cartridgeType}.pdf`;
 
       if (req.query.type === 'hedgefund' && cartridgeType === 'Personal')
-        finalFileName = `${readingFileName}.pdf`
+        finalFileName = `${readingFileName}.pdf`;
     }
-    res.setHeader('file-name', finalFileName)
-    res.setHeader('id', guid)
+    res.setHeader('file-name', finalFileName);
+    res.setHeader('id', guid);
     if (!isHedgePublic) {
-      res.setHeader('hash', encryptedData)
+      res.setHeader('hash', encryptedData);
     }
 
     res.download('modified/' + fileName, fileName, (err) => {
       fs.unlink(`modified/${fileName}`, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
     })
     if (req.file)
       fs.unlink(req.file.path, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
   } catch (err) {
-    res.status(500).send(err)
+    res.status(500).send(err);
   }
 })
 
@@ -564,54 +564,54 @@ app.post('/doc', upload.single('file'), async (req, res) => {
     const meta = JSON.parse(meta_form);
 
     // Fill merge fields
-    const content = fs.readFileSync(req.file.path, 'binary')
-    const zip = new PizZip(content)
-    const doc = new Docxtemplater()
+    const content = fs.readFileSync(req.file.path, 'binary');
+    const zip = new PizZip(content);
+    const doc = new Docxtemplater();
 
-    doc.loadZip(zip)
-    doc.setData(meta)
-    doc.render()
-    const docData = doc.getZip().generate({ type: 'nodebuffer' })
+    doc.loadZip(zip);
+    doc.setData(meta);
+    doc.render();
+    const docData = doc.getZip().generate({ type: 'nodebuffer' });
 
     // Convert word document to pdf
-    const pdfData = await libreConvertAsync(docData, '.pdf', undefined)
-    fs.writeFileSync(req.file.path, pdfData)
+    const pdfData = await libreConvertAsync(docData, '.pdf', undefined);
+    fs.writeFileSync(req.file.path, pdfData);
 
     // Create pdf writer
     const writer = hummus.createWriterToModify(req.file.path, {
       modifiedFilePath: 'modified/' + req.file.filename
-    })
-    const reader = hummus.createReader(req.file.path)
+    });
+    const reader = hummus.createReader(req.file.path);
 
     // Add meta data
-    const infoDictionary = writer.getDocumentContext().getInfoDictionary()
+    const infoDictionary = writer.getDocumentContext().getInfoDictionary();
     for (const key of Object.keys(meta)) {
-      infoDictionary.addAdditionalInfoEntry(key, meta[key])
+      infoDictionary.addAdditionalInfoEntry(key, meta[key]);
     }
-    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
-    infoDictionary.addAdditionalInfoEntry('formJSON', data_form)
-    const guid = uuidv1()
-    infoDictionary.addAdditionalInfoEntry('id', guid)
+    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
+    infoDictionary.addAdditionalInfoEntry('formJSON', data_form);
+    const guid = uuidv1();
+    infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id)
-      infoDictionary.addAdditionalInfoEntry('master_id', master_id)
+      infoDictionary.addAdditionalInfoEntry('master_id', master_id);
 
     // Add QR Code into first page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
-    const pageBox = reader.parsePage(0).getMediaBox()
-    const pageWidth = pageBox[2] - pageBox[0]
-    const pageHeight = pageBox[3] - pageBox[1]
-    const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
-    const ctx = pageModifier.startContext().getContext()
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+    const pageBox = reader.parsePage(0).getMediaBox();
+    const pageWidth = pageBox[2] - pageBox[0];
+    const pageHeight = pageBox[3] - pageBox[1];
+    const pageModifier = new hummus.PDFPageModifier(writer, 0, true);
+    const ctx = pageModifier.startContext().getContext();
     ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
       transformation: {
         width: 100,
         height: 100,
         fit: 'always'
       }
-    })
+    });
 
     if (meta.organization_logo) {
-      const base64Data = meta.organization_logo.split(',')[1]
+      const base64Data = meta.organization_logo.split(',')[1];
       await fs.writeFileSync("qr-logo.png", base64Data, {
         encoding: "base64"
       });
@@ -623,36 +623,36 @@ app.post('/doc', upload.single('file'), async (req, res) => {
         height: 30,
         fit: 'always'
       }
-    })
-    pageModifier.endContext().writePage()
+    });
+    pageModifier.endContext().writePage();
     pageModifier
       .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
-      .endContext().writePage()
-    writer.end()
+      .endContext().writePage();
+    writer.end();
 
     // Generate file name (Attach 'SmartDoc' to original filename)
-    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf'
-    await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName)
+    const fileName = req.file.originalname.substring(0, req.file.originalname.length - 4) + '_SmartDoc.pdf';
+    await renameFileAsync('modified/' + req.file.filename, 'modified/' + fileName);
 
     const encryptedData = await registerIdentity(fileName, guid);
 
     // Attach file name to response header
-    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
-    res.setHeader('file-name', fileName)
-    res.setHeader('id', guid)
-    res.setHeader('hash', encryptedData)
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
+    res.setHeader('file-name', fileName);
+    res.setHeader('id', guid);
+    res.setHeader('hash', encryptedData);
 
     res.download('modified/' + fileName, fileName, (err) => {
       fs.unlink(`modified/${fileName}`, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
     })
     fs.unlink(req.file.path, (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
   } catch (err) {
     console.log(err)
-    res.status(err.statusCode || 500).send(err)
+    res.status(err.statusCode || 500).send(err);
   }
 })
 
@@ -722,21 +722,21 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
     const meta = JSON.parse(meta_form);
 
     // Fill merge fields
-    const content = fs.readFileSync(req.files['file'][0].path, 'binary')
-    const zip = new PizZip(content)
-    const doc = new Docxtemplater()
+    const content = fs.readFileSync(req.files['file'][0].path, 'binary');
+    const zip = new PizZip(content);
+    const doc = new Docxtemplater();
 
-    doc.loadZip(zip)
-    doc.setData(meta)
-    doc.render()
-    const docData = doc.getZip().generate({ type: 'nodebuffer' })
+    doc.loadZip(zip);
+    doc.setData(meta);
+    doc.render();
+    const docData = doc.getZip().generate({ type: 'nodebuffer' });
 
     fs.writeFileSync(`modified/source.docx`, docData);
 
-    const guid = uuidv1()
+    const guid = uuidv1();
 
     // Add QR Code into last page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
     const document = new Document();
     const image1 = Media.addImage(document, fs.readFileSync('qr.png'), 150, 150, {
       floating: {
@@ -752,8 +752,8 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
 
     let logoimage = "integra-qr.png";
     if (logo_url) {
-      await doRequest(logo_url, "qr-logo.png")
-      logoimage = "qr-logo.png"
+      await doRequest(logo_url, "qr-logo.png");
+      logoimage = "qr-logo.png";
     }
     if (req.files['logo']) {
       const logoFile = req.files['logo'][0];
@@ -779,7 +779,7 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
         new Paragraph(image2),
       ],
     });
-    const qrdata = await Packer.toBuffer(document)
+    const qrdata = await Packer.toBuffer(document);
     fs.writeFileSync("modified/qr.docx", qrdata);
 
     const inputFile1 = fs.readFileSync('modified/qr.docx');
@@ -790,8 +790,8 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
     /**
      * Unzip docx file
      */
-    const directory = await unzipper.Open.file('modified/filled.docx')
-    await directory.extract({path: 'modified/unzipped'})
+    const directory = await unzipper.Open.file('modified/filled.docx');
+    await directory.extract({path: 'modified/unzipped'});
 
     /**
      * Create new item.mxl
@@ -904,44 +904,44 @@ app.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1}, { name: '
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
     fs.rmdir('modified/unzipped', { recursive: true }, (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
     fs.unlink('modified/qr.docx', (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
     fs.unlink('modified/source.docx', (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
     fs.unlink('modified/filled.docx', (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
     if (req.files['file'])
       fs.unlink(req.files['file'][0].path, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
 
     if (req.files['logo']) {
       fs.unlink(req.files['logo'][0].path, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
     }
 
     const encryptedData = await registerIdentity(fileName, guid);
 
     // Attach file name to response header
-    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
-    res.setHeader('file-name', fileName)
-    res.setHeader('id', guid)
-    res.setHeader('hash', encryptedData)
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
+    res.setHeader('file-name', fileName);
+    res.setHeader('id', guid);
+    res.setHeader('hash', encryptedData);
 
     res.download('modified/' + fileName, fileName, (err) => {
       fs.unlink(`modified/${fileName}`, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
     })
   } catch (err) {
-    console.log('err', err)
-    res.status(err.statusCode || 500).send(err)
+    console.log('err', err);
+    res.status(err.statusCode || 500).send(err);
   }
 })
 
@@ -974,9 +974,9 @@ const uploadFileToAzure = (fileName) => {
       const url = blobService.getUrl(containerName, fileName, null, hostName);
 
       if (!error) {
-        resolve(url)
+        resolve(url);
       } else {
-        reject(error)
+        reject(error);
       }
     });
   });
@@ -987,9 +987,9 @@ const deleteAzureBlob = (fileName) => {
     const blobService = azure.createBlobService();
     blobService.deleteBlob('docassemble', fileName, function(error, response) {
       if (!error) {
-        resolve(true)
+        resolve(true);
       } else {
-        reject(error)
+        reject(error);
       }
     })
   });
@@ -997,12 +997,12 @@ const deleteAzureBlob = (fileName) => {
 
 app.delete('/docassemble', async (req, res) => {
   try {
-    await deleteAzureBlob(req.body.name)
+    await deleteAzureBlob(req.body.name);
     res.status(200).json({
       success: true,
     });
   } catch (err) {
-    res.status(err.statusCode || 500).send(err)
+    res.status(err.statusCode || 500).send(err);
   }
 })
 
@@ -1011,41 +1011,41 @@ app.post('/docassemble', async (req, res) => {
     const { meta_form, file } = req.body;
     const meta = JSON.parse(meta_form);
 
-    const srcFileName = 'modified/docassemble.pdf'
-    const result = await doRequest(file, srcFileName)
+    const srcFileName = 'modified/docassemble.pdf';
+    const result = await doRequest(file, srcFileName);
 
     // Create pdf writer
     const writer = hummus.createWriterToModify(srcFileName, {
       modifiedFilePath: 'modified/docassemble_modified.pdf'
-    })
-    const reader = hummus.createReader(srcFileName)
+    });
+    const reader = hummus.createReader(srcFileName);
     // Add meta data
-    const infoDictionary = writer.getDocumentContext().getInfoDictionary()
+    const infoDictionary = writer.getDocumentContext().getInfoDictionary();
     for (const key of Object.keys(meta)) {
-      infoDictionary.addAdditionalInfoEntry(key, meta[key])
+      infoDictionary.addAdditionalInfoEntry(key, meta[key]);
     }
-    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta))
-    const guid = uuidv1()
-    infoDictionary.addAdditionalInfoEntry('id', guid)
+    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
+    const guid = uuidv1();
+    infoDictionary.addAdditionalInfoEntry('id', guid);
 
     // Fill form fields
     meta.id = guid;
-    fillForm(writer, meta)
+    fillForm(writer, meta);
 
     // Add QR Code into first page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`)
-    const pageBox = reader.parsePage(0).getMediaBox()
-    const pageWidth = pageBox[2] - pageBox[0]
-    const pageHeight = pageBox[3] - pageBox[1]
-    const pageModifier = new hummus.PDFPageModifier(writer, 0, true)
-    const ctx = pageModifier.startContext().getContext()
+    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+    const pageBox = reader.parsePage(0).getMediaBox();
+    const pageWidth = pageBox[2] - pageBox[0];
+    const pageHeight = pageBox[3] - pageBox[1];
+    const pageModifier = new hummus.PDFPageModifier(writer, 0, true);
+    const ctx = pageModifier.startContext().getContext();
     ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
       transformation: {
         width: 100,
         height: 100,
         fit: 'always'
       }
-    })
+    });
 
     ctx.drawImage(pageWidth - 65, pageHeight - 65, 'integra-qr.png', {
       transformation: {
@@ -1053,43 +1053,43 @@ app.post('/docassemble', async (req, res) => {
         height: 30,
         fit: 'always'
       }
-    })
-    pageModifier.endContext().writePage()
+    });
+    pageModifier.endContext().writePage();
     pageModifier
       .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
-      .endContext().writePage()
-    writer.end()
+      .endContext().writePage();
+    writer.end();
 
 
-    const originName = file.split('/').pop()
+    const originName = file.split('/').pop();
 
     // Generate file name (Attach 'SmartDoc' to original filename)
-    const fileName = originName.substring(0, originName.length - 4) + '_SmartDoc.pdf'
-    await renameFileAsync('modified/docassemble_modified.pdf', 'modified/' + fileName)
+    const fileName = originName.substring(0, originName.length - 4) + '_SmartDoc.pdf';
+    await renameFileAsync('modified/docassemble_modified.pdf', 'modified/' + fileName);
 
     const encryptedData = await registerIdentity(fileName, guid);
 
     // Attach file name to response header
-    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash')
-    res.setHeader('file-name', fileName)
-    res.setHeader('id', guid)
-    res.setHeader('hash', encryptedData)
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
+    res.setHeader('file-name', fileName);
+    res.setHeader('id', guid);
+    res.setHeader('hash', encryptedData);
 
-    const uploadedUrl = await uploadFileToAzure(fileName)
+    const uploadedUrl = await uploadFileToAzure(fileName);
     res.status(200).json({
       success: true,
       url: uploadedUrl
     });
 
     fs.unlink(`modified/${fileName}`, (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
     fs.unlink('modified/docassemble.pdf', (err) => {
-      if (err) console.log(err)
+      if (err) console.log(err);
     })
   } catch (err) {
-    console.log(err)
-    res.send(err)
+    console.log(err);
+    res.send(err);
   }
 })
 
@@ -1121,19 +1121,19 @@ app.get('/QRVerify/:guid', async (req, res) => {
           'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY
       },
     });
-    const result = await response.json()
+    const result = await response.json();
     if (result.exists) {
       res.render('success', {
         identityId: result.data[result.data.length - 1].Record.identityId,
         value: result.data[result.data.length - 1].Record.value,
         metaData: result.data[result.data.length - 1].Record.metaData,
         creationDate: moment(result.data[result.data.length - 1].Record.creationDate).format('LLL'),
-      })
+      });
     } else {
-      res.render('failure')
+      res.render('failure');
     }
   } catch (err) {
-    res.send(err)
+    res.send(err);
   }
 })
 
@@ -1236,7 +1236,7 @@ app.post('/verifyKey/:key', async (req, res) => {
     const result = verify.verify(pubKey, Buffer.from(encrypted_passphrase, 'base64'));
     res.status(200).json({
       success: result
-    })
+    });
   } catch (err) {
     res.status(500).json(err);
   }
@@ -1296,14 +1296,14 @@ app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
       RSAEncryptedIv: RSAEncryptedIv.toString("base64")
     };
 
-    res.send(encrypted)
+    res.send(encrypted);
 
     if (req.file)
       fs.unlink(req.file.path, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
   } catch (err) {
-    res.send(err)
+    res.send(err);
   }
 })
 
@@ -1335,26 +1335,26 @@ app.post('/encryptWithPublicKey', upload.single('file'), async (req, res) => {
 app.post('/decryptWithPrivateKey', async (req, res) => {
   try {
     const { data, privateKey } = req.body;
-    const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey, filename } = data
+    const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey, filename } = data;
     const key = createPrivateKeyObject(privateKey);
 
     const aes_iv = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedIV, 'base64'));
     const aes_key = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedKey, 'base64'));
     const dec = decrypt({ encryptedData: AESEncryptedDoc, iv: aes_iv, key: aes_key });
-    fs.writeFileSync(`modified/${filename}`, dec, 'binary')
+    fs.writeFileSync(`modified/${filename}`, dec, 'binary');
 
-    res.setHeader('Access-Control-Expose-Headers', 'file-name')
-    res.setHeader('file-name', filename)
+    res.setHeader('Access-Control-Expose-Headers', 'file-name');
+    res.setHeader('file-name', filename);
 
     res.download(`modified/${filename}`, filename, (err) => {
       fs.unlink(`modified/${filename}`, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
     })
 
   } catch (err) {
-    console.log(err)
-    res.send(err)
+    console.log(err);
+    res.send(err);
   }
 })
 
@@ -1400,14 +1400,14 @@ David`;
       ]
     };
 
-    await sgMail.send(msg)
-    res.send({success: true})
+    await sgMail.send(msg);
+    res.send({success: true});
     if (req.file)
       fs.unlink(req.file.path, (err) => {
-        if (err) console.log(err)
+        if (err) console.log(err);
       })
   } catch (err) {
-    res.send(err)
+    res.send(err);
   }
 })
 
@@ -1455,7 +1455,7 @@ app.post('/readFile', upload.single('file'), (req, res) => {
         default:
           filecontent = filename;
       }
-      res.send(filecontent)
+      res.send(filecontent);
   });
 });
 
@@ -1476,13 +1476,13 @@ app.get('/verification', async (req, res) => {
       ]
     },
       function(err, response) {
-        res.send({ id: response.id, url: response.next_action.redirect_to_url })
+        res.send({ id: response.id, url: response.next_action.redirect_to_url });
       }
     );
 
   } catch (err) {
-    console.log(err)
-    res.send(err)
+    console.log(err);
+    res.send(err);
   }
 })
 
@@ -1505,22 +1505,21 @@ app.get('/verification/:id', async (req, res) => {
     );
 
   } catch (err) {
-    console.log(err)
-    res.send(err)
+    console.log(err);
+    res.send(err);
   }
 })
 
 app.get('/checkFile', (req, res) => {
-
   try {
-    res.render('checkfile')
+    res.render('checkfile');
   } catch (err) {
-    res.send(err)
+    res.send(err);
   }
 })
 
 app.get('/', (req, res) => {
-  res.send(`Integra API (Blockchain API: ${BLOCKCHAIN_API_URL})`)
+  res.send(`Integra API (Blockchain API: ${BLOCKCHAIN_API_URL})`);
 });
 
 // app.post("/webhooks", async (req, res) => {
@@ -1564,8 +1563,8 @@ app.use(
   swaggerUi.setup(specs, { explorer: true })
 );
 
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
   console.log('Listening on port ' + port + '!')
-})
+});
