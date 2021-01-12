@@ -64,6 +64,10 @@ app.use(express.static('public'))
 app.set('views', __dirname + '/views')
 app.set('view engine', 'ejs');
 
+const BLOCKCHAIN_API_URL = process.env.NODE_ENV === 'development' ?
+  'https://integraledger.azure-api.net/api/v1.4' :
+  'https://integraledger.azure-api.net/api/v1.5';
+
 // Connect to mongodb
 const uri = 'mongodb+srv://dbIntegra:password22@cluster0-qqiiz.azure.mongodb.net/integra?retryWrites=true&w=majority';
 mongoose.connect(uri, {
@@ -82,7 +86,7 @@ var api_routes = require('./routes/api/index');
 app.use('/api', api_routes);
 
 const getValue = async data => {
-  const response = await fetch(`${process.env.BLOCKCHAIN_API_URL}/valueexists/` + data, {
+  const response = await fetch(`${BLOCKCHAIN_API_URL}/valueexists/` + data, {
     method: 'get',
     headers: {
         'Content-Type': 'application/json',
@@ -106,7 +110,7 @@ const registerIdentity = async (fileName, guid, opt1 = '') => {
   const encryptedData = crypto.createHash('sha256')
     .update(fileData)
     .digest('hex');
-  await fetch(`${process.env.BLOCKCHAIN_API_URL}/registerIdentity`, {
+  await fetch(`${BLOCKCHAIN_API_URL}/registerIdentity`, {
     method: 'post',
     body: JSON.stringify({
       'identityType': 'com.integraledger.lmatid',
@@ -413,7 +417,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
       const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
 
-      const registerKeyRes = await fetch(`${process.env.BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      const registerKeyRes = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
           method: 'post',
           headers: {
             'Content-Type': 'application/json',
@@ -431,7 +435,7 @@ app.post('/pdf', upload.single('file'), async (req, res) => {
       const pubkeyString = publicKey.export({type: "pkcs1", format: "pem"})
       const privkeyString = privateKey.export({type: "pkcs1", format: "pem"})
 
-      await fetch(`${process.env.BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
@@ -1110,7 +1114,7 @@ app.post('/docassemble', async (req, res) => {
 
 app.get('/QRVerify/:guid', async (req, res) => {
   try {
-    const response = await fetch(`${process.env.BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
+    const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
       method: 'get',
       headers: {
           'Content-Type': 'application/json',
@@ -1165,7 +1169,7 @@ app.get('/QRVerify/:guid', async (req, res) => {
 
 app.get('/publicKey/:id', async (req, res) => {
   try {
-    const response = await fetch(`${process.env.BLOCKCHAIN_API_URL}/keyforowner/` + req.params.id, {
+    const response = await fetch(`${BLOCKCHAIN_API_URL}/keyforowner/` + req.params.id, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -1516,7 +1520,7 @@ app.get('/checkFile', (req, res) => {
 })
 
 app.get('/', (req, res) => {
-  res.send(`Integra API (Blockchain API: ${process.env.BLOCKCHAIN_API_URL})`)
+  res.send(`Integra API (Blockchain API: ${BLOCKCHAIN_API_URL})`)
 });
 
 // app.post("/webhooks", async (req, res) => {
