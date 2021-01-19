@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
@@ -13,20 +12,6 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('public'));
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
-
-// Connect to mongodb
-const uri = 'mongodb+srv://dbIntegra:password22@cluster0-qqiiz.azure.mongodb.net/integra?retryWrites=true&w=majority';
-mongoose.connect(uri, {
-  dbName: 'dbIntegra',
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-  .then(() => {
-    console.log('DB connected.');
-  })
-  .catch(err => {
-    console.log('Error: Unable to connect to db. ' + err);
-  })
 
 app.use('/', require('./routes/index'));
 
@@ -71,10 +56,4 @@ app.use(
   swaggerUi.setup(specs, { explorer: true })
 );
 
-const port = process.env.PORT || 3000;
-
-const server = app.listen(port, () => {
-  console.log('Listening on port ' + port + '!')
-});
-
-module.exports = { app, server };
+module.exports = app;

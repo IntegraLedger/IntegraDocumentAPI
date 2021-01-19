@@ -4,8 +4,9 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
@@ -49,6 +50,8 @@
     "zip-dir": "^2.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.2"
+    "jest": "^26.6.3",
+    "nodemon": "^2.0.2",
+    "supertest": "^6.0.1"
   }
 }

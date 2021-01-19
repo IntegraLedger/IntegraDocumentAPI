@@ -16,6 +16,11 @@ COPY . .
 RUN test -e .env.dev && cp .env.dev .env || echo "Production"
 RUN test -e .env.prod && cp .env.prod .env || echo "Development"
 
+ARG DOCKER_ENV
+ENV NODE_ENV=${DOCKER_ENV}
+
+RUN npm run test
+
 ENV PORT 3000
 EXPOSE ${PORT}
-CMD ["node", "app.js"]
+CMD ["npm", "run", "start"]

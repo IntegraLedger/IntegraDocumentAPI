@@ -44,9 +44,10 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2020-03-02; identity_beta=v3',
 });
 
-const BLOCKCHAIN_API_URL = process.env.NODE_ENV === 'development' ?
-    'https://integraledger.azure-api.net/api/v1.4' :
-    'https://integraledger.azure-api.net/api/v1.5';
+console.log(process.env.NODE_ENV, "===")
+const BLOCKCHAIN_API_URL = process.env.NODE_ENV === 'production' ?
+    'https://integraledger.azure-api.net/api/v1.5' :
+    'https://integraledger.azure-api.net/api/v1.4';
 
 const getValue = async data => {
     const response = await fetch(`${BLOCKCHAIN_API_URL}/valueexists/` + data, {
