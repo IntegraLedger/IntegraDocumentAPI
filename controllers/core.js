@@ -44,8 +44,8 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2020-03-02; identity_beta=v3',
 });
 
-console.log(process.env.NODE_ENV, "===")
-const BLOCKCHAIN_API_URL = process.env.NODE_ENV === 'production' ?
+console.log(process.env.APP_ENV, "===")
+const BLOCKCHAIN_API_URL = process.env.APP_ENV === 'production' ?
     'https://integraledger.azure-api.net/api/v1.5' :
     'https://integraledger.azure-api.net/api/v1.4';
 
