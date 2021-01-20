@@ -2,10 +2,11 @@ const request = require('supertest');
 const app = require('../../app');
 
 describe('POST /analyze', function () {
+    const filename = process.env.APP_ENV === 'development'? 'sample_SmartDoc.pdf' : 'sample_prod_SmartDoc.pdf';
     test('Should return metadata if authenticated', (done) => {
         request(app)
             .post('/analyze')
-            .attach('file', 'test_files/sample_SmartDoc.pdf')
+            .attach('file', `test_files/${filename}`)
             .expect(200)
             .end((err, res) => {
                 if (err) {
@@ -15,7 +16,7 @@ describe('POST /analyze', function () {
                 done();
             })
     });
-    test('Should return false if authenticated', (done) => {
+    test('Should return false if not authenticated', (done) => {
         request(app)
             .post('/analyze')
             .attach('file', 'test_files/sample.pdf')
@@ -31,10 +32,11 @@ describe('POST /analyze', function () {
 });
 
 describe('POST /analyzeDocx', function () {
+    const filename = process.env.APP_ENV === 'development'? 'sample_SmartDoc.docx' : 'sample_prod_SmartDoc.docx';
     test('Should return metadata if authenticated', (done) => {
         request(app)
             .post('/analyzeDocx')
-            .attach('file', 'test_files/sample_SmartDoc.docx')
+            .attach('file', `test_files/${filename}`)
             .expect(200)
             .end((err, res) => {
                 if (err) {
@@ -44,7 +46,7 @@ describe('POST /analyzeDocx', function () {
                 done();
             })
     });
-    test('Should return false if authenticated', (done) => {
+    test('Should return false if not authenticated', (done) => {
         request(app)
             .post('/analyzeDocx')
             .attach('file', 'test_files/sample.docx')
@@ -125,9 +127,11 @@ describe('POST /docxSmartdoc', function () {
 });
 
 describe('GET /QRVerify/:guid', () => {
+    const guid = process.env.APP_ENV === 'development'? 'af702180-58ad-11eb-8d19-4111daa82f84' : '9ef367e0-5b2d-11eb-8a77-790a5e8c3d4f';
+
     test('Should return success ejs if authenticated', (done) => {
         request(app)
-            .get('/QRVerify/af702180-58ad-11eb-8d19-4111daa82f84')
+            .get(`/QRVerify/${guid}`)
             .expect(200)
             .end((err, res) => {
                 if (err) {
