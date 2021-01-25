@@ -256,7 +256,7 @@ exports.analyzeDocx = async (req, res) => {
       const a = fs.readFileSync(`modified/unzipped/customXml/item${itemFiles.length}.xml`).toString();
       const json = parser.toJson(a, { object: true });
       const meta = {};
-      if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
+      if (json.Session && json.Session.xmlns == 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
         json.Session.Variable &&
           json.Session.Variable.reduce((acc, cur) => {
             acc[cur.Name] = cur.Value;
