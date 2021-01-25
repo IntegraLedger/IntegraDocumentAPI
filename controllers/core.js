@@ -40,7 +40,6 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2020-03-02; 
 const filereader = require('../filereader');
 const { fillForm } = require('../pdf-form-fill');
 
-console.log(process.env.APP_ENV, '===');
 const BLOCKCHAIN_API_URL =
   process.env.APP_ENV === 'production' ? 'https://integraledger.azure-api.net/api/v1.5' : 'https://integraledger.azure-api.net/api/v1.4';
 
@@ -230,12 +229,10 @@ exports.analyze = async (req, res) => {
     } else {
       result = { result: false };
     }
-    fs.unlink(req.file.path, err => {
-      if (err) console.log(err);
-    });
+    fs.unlinkSync(req.file.path);
     res.send(result);
   } catch (err) {
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -264,9 +261,7 @@ exports.analyzeDocx = async (req, res) => {
           }, meta);
       }
 
-      fs.rmdir('modified/unzipped', { recursive: true }, err => {
-        if (err) console.log(err);
-      });
+      fs.rmdirSync('modified/unzipped', { recursive: true });
       result = {
         result: meta,
         creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate,
@@ -274,13 +269,11 @@ exports.analyzeDocx = async (req, res) => {
     } else {
       result = { result: false };
     }
-    fs.unlink(req.file.path, err => {
-      if (err) console.log(err);
-    });
+    fs.unlinkSync(req.file.path);
 
     res.send(result);
   } catch (err) {
-    res.status(500).send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -423,17 +416,13 @@ exports.pdf = async (req, res) => {
     }
 
     res.download(`modified/${fileName}`, fileName, () => {
-      fs.unlink(`modified/${fileName}`, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(`modified/${fileName}`);
     });
     if (req.file) {
-      fs.unlink(req.file.path, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(req.file.path);
     }
   } catch (err) {
-    res.status(500).send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -523,15 +512,10 @@ exports.doc = async (req, res) => {
     res.setHeader('hash', encryptedData);
 
     res.download(`modified/${fileName}`, fileName, err => {
-      fs.unlink(`modified/${fileName}`, () => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(`modified/${fileName}`);
     });
-    fs.unlink(req.file.path, err => {
-      if (err) console.log(err);
-    });
+    fs.unlinkSync(req.file.path);
   } catch (err) {
-    console.log(err);
     res.status(err.statusCode || 500).send(err);
   }
 };
@@ -721,28 +705,16 @@ exports.docxSmartdoc = async (req, res) => {
     const buffer = await zipdir('modified/unzipped');
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
-    fs.rmdir('modified/unzipped', { recursive: true }, err => {
-      if (err) console.log(err);
-    });
-    fs.unlink('modified/qr.docx', err => {
-      if (err) console.log(err);
-    });
-    fs.unlink('modified/source.docx', err => {
-      if (err) console.log(err);
-    });
-    fs.unlink('modified/filled.docx', err => {
-      if (err) console.log(err);
-    });
+    fs.rmdirSync('modified/unzipped', { recursive: true });
+    fs.unlinkSync('modified/qr.docx');
+    fs.unlinkSync('modified/source.docx');
+    fs.unlinkSync('modified/filled.docx');
     if (req.files.file) {
-      fs.unlink(req.files.file[0].path, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(req.files.file[0].path);
     }
 
     if (req.files.logo) {
-      fs.unlink(req.files.logo[0].path, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(req.files.logo[0].path);
     }
 
     const encryptedData = await registerIdentity(fileName, guid);
@@ -754,12 +726,9 @@ exports.docxSmartdoc = async (req, res) => {
     res.setHeader('hash', encryptedData);
 
     res.download(`modified/${fileName}`, fileName, () => {
-      fs.unlink(`modified/${fileName}`, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(`modified/${fileName}`);
     });
   } catch (err) {
-    console.log('err', err);
     res.status(err.statusCode || 500).send(err);
   }
 };
@@ -850,15 +819,10 @@ exports.docassemble = async (req, res) => {
       url: uploadedUrl,
     });
 
-    fs.unlink(`modified/${fileName}`, err => {
-      if (err) console.log(err);
-    });
-    fs.unlink('modified/docassemble.pdf', err => {
-      if (err) console.log(err);
-    });
+    fs.unlinkSync(`modified/${fileName}`);
+    fs.unlinkSync('modified/docassemble.pdf');
   } catch (err) {
-    console.log(err);
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -883,7 +847,7 @@ exports.qrVerify = async (req, res) => {
       res.render('failure');
     }
   } catch (err) {
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -908,7 +872,7 @@ exports.publicKey = async (req, res) => {
       });
     }
   } catch (err) {
-    res.status(500).json(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -926,7 +890,7 @@ exports.verifyKey = async (req, res) => {
       success: result,
     });
   } catch (err) {
-    res.status(500).json(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -949,12 +913,10 @@ exports.encryptWithPublicKey = async (req, res) => {
     res.send(encrypted);
 
     if (req.file) {
-      fs.unlink(req.file.path, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(req.file.path);
     }
   } catch (err) {
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -977,13 +939,10 @@ exports.decryptWithPrivateKey = async (req, res) => {
     res.setHeader('file-name', filename);
 
     res.download(`modified/${filename}`, filename, () => {
-      fs.unlink(`modified/${filename}`, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(`modified/${filename}`);
     });
   } catch (err) {
-    console.log(err);
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -1037,12 +996,10 @@ exports.email = async (req, res) => {
     await sgMail.send(msg);
     res.send({ success: true });
     if (req.file) {
-      fs.unlink(req.file.path, err => {
-        if (err) console.log(err);
-      });
+      fs.unlinkSync(req.file.path);
     }
   } catch (err) {
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -1056,9 +1013,7 @@ exports.readFile = (req, res) => {
     switch (fileextension) {
       case '.pdf':
         new PdfReader().parseBuffer(filebuffer, (parseErr, item) => {
-          if (parseErr) console.log(parseErr);
-          else if (!item) console.log(item);
-          else if (item.text) {
+          if (!parseErr && item && item.text) {
             filecontent = `${filecontent} ${item.text}`;
           }
         });
@@ -1116,8 +1071,7 @@ exports.verification = async (req, res) => {
       }
     );
   } catch (err) {
-    console.log(err);
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -1136,8 +1090,7 @@ exports.idVerification = async (req, res) => {
       res.send(response);
     });
   } catch (err) {
-    console.log(err);
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
@@ -1145,7 +1098,7 @@ exports.checkFile = (req, res) => {
   try {
     res.render('checkfile');
   } catch (err) {
-    res.send(err);
+    res.status(err.statusCode || 500).send(err);
   }
 };
 
