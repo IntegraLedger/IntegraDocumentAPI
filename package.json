@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
+    "test": "jest",
     "lint": "eslint --fix .",
-    "test": "jest"
+    "prettier:check": "prettier --ignore-path .eslintignore --check .",
+    "prettier:write": "prettier --ignore-path .eslintignore --write ."
   },
   "author": "",
   "license": "ISC",
@@ -56,9 +58,15 @@
     "eslint-config-prettier": "^7.2.0",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-prettier": "^3.3.1",
+    "husky": "^4.3.8",
     "jest": "^26.6.3",
     "nodemon": "^2.0.2",
     "prettier": "^2.2.1",
     "supertest": "^6.0.1"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run prettier:write && npm run lint"
+    }
   }
 }
