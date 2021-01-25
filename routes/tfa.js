@@ -1,6 +1,7 @@
-var express = require('express');
-var router = express.Router();
-var tfa = require('../controllers/tfa');
+const express = require('express');
+
+const router = express.Router();
+const tfa = require('../controllers/tfa');
 
 router.post('/send_email', tfa.sendEmailCode);
 router.post('/verify_email', tfa.verifyEmailCode);

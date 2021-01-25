@@ -1,10 +1,12 @@
-var express = require('express');
-var router = express.Router();
-var core = require('../controllers/core');
+const express = require('express');
 const multer = require('multer');
+const core = require('../controllers/core');
+
+const router = express.Router();
+
 const upload = multer({
   dest: 'uploads/',
-  limits: { fieldSize: 25 * 1024 * 1024 }
+  limits: { fieldSize: 25 * 1024 * 1024 },
 });
 
 /**
@@ -195,7 +197,14 @@ router.post('/doc', upload.single('file'), core.doc);
  *        "200":
  *          description: return signed docx file
  */
-router.post('/docxSmartDoc', upload.fields([{ name: 'file', maxCount: 1 }, { name: 'logo', maxCount: 1 }]), core.docxSmartdoc);
+router.post(
+  '/docxSmartDoc',
+  upload.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'logo', maxCount: 1 },
+  ]),
+  core.docxSmartdoc
+);
 
 router.delete('/docassemble', core.deleteDocassemble);
 router.post('/docassemble', core.docassemble);
