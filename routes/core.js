@@ -364,5 +364,6 @@ router.get('/verification', core.verification);
 router.get('/verification/:id', core.idVerification);
 router.get('/checkFile', core.checkFile);
 router.get('/', core.root);
+router.post('/upload', upload.single('file'), core.uploadToAzure);
 
 module.exports = router;

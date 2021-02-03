@@ -185,11 +185,10 @@ const doRequest = (url, filename) => {
   });
 };
 
-const uploadFileToAzure = fileName =>
+const uploadFileToAzure = (containerName, filePath, fileName) =>
   new Promise((resolve, reject) => {
     const blobService = azure.createBlobService();
-    blobService.createBlockBlobFromLocalFile('docassemble', fileName, `modified/${fileName}`, (error, result, response) => {
-      const containerName = 'docassemble';
+    blobService.createBlockBlobFromLocalFile(containerName, fileName, filePath, (error, result, response) => {
       const hostName = 'https://doccreationcenter.blob.core.windows.net';
       const url = blobService.getUrl(containerName, fileName, null, hostName);
 
@@ -201,10 +200,10 @@ const uploadFileToAzure = fileName =>
     });
   });
 
-const deleteAzureBlob = fileName =>
+const deleteAzureBlob = (containerName, fileName) =>
   new Promise((resolve, reject) => {
     const blobService = azure.createBlobService();
-    blobService.deleteBlob('docassemble', fileName, (error, response) => {
+    blobService.deleteBlob(containerName, fileName, (error, response) => {
       if (!error) {
         resolve(true);
       } else {
@@ -735,7 +734,7 @@ exports.docxSmartdoc = async (req, res) => {
 
 exports.deleteDocassemble = async (req, res) => {
   try {
-    await deleteAzureBlob(req.body.name);
+    await deleteAzureBlob('docassemble', req.body.name);
     res.status(200).json({
       success: true,
     });
@@ -813,7 +812,7 @@ exports.docassemble = async (req, res) => {
     res.setHeader('id', guid);
     res.setHeader('hash', encryptedData);
 
-    const uploadedUrl = await uploadFileToAzure(fileName);
+    const uploadedUrl = await uploadFileToAzure('docassemble', `modified/${fileName}`, fileName);
     res.status(200).json({
       success: true,
       url: uploadedUrl,
@@ -1097,6 +1096,19 @@ exports.idVerification = async (req, res) => {
 exports.checkFile = (req, res) => {
   try {
     res.render('checkfile');
+  } catch (err) {
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
+exports.uploadToAzure = async (req, res) => {
+  try {
+    const uploadedUrl = await uploadFileToAzure(req.body.container, req.file.path, req.file.originalname);
+    res.status(200).json({
+      success: true,
+      url: uploadedUrl,
+    });
+    fs.unlinkSync(req.file.path);
   } catch (err) {
     res.status(err.statusCode || 500).send(err);
   }
