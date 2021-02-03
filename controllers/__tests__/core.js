@@ -129,6 +129,28 @@ describe('POST /docxSmartdoc', () => {
   });
 });
 
+describe('POST /docxSmartDocAutoOpen', () => {
+  const meta_form = '{"text":"test"}';
+  const data_form =
+    '[{"name":"Text Field","type":1,"icon":"text_field.png","id":"585383c0-573a-11eb-903c-35b6d9827ce0","label":"Text","cid":"text"}]';
+  test('Should return signed docx-format smart document', done => {
+    request(app)
+      .post('/docxSmartDocAutoOpen')
+      .field('meta_form', meta_form)
+      .field('data_form', data_form)
+      .attach('file', 'test_files/sample.docx')
+      .expect(200)
+      .end((err, res) => {
+        if (err) {
+          return done(err);
+        }
+        expect(res.header['file-name']).toEqual(expect.any(String));
+        expect(res.header.id).toEqual(expect.any(String));
+        done();
+      });
+  });
+});
+
 describe('GET /QRVerify/:guid', () => {
   const guid = process.env.APP_ENV === 'development' ? 'af702180-58ad-11eb-8d19-4111daa82f84' : '9ef367e0-5b2d-11eb-8a77-790a5e8c3d4f';
 

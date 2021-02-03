@@ -206,6 +206,55 @@ router.post(
   core.docxSmartdoc
 );
 
+/**
+ * @swagger
+ * path:
+ *  /docxSmartDocAutoOpen/:
+ *    post:
+ *      description: Create signed docx format smart document which opens addin panel automatically with adding metadata, filling form fields of docx file and adding QR code
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                master_id:
+ *                  type: string
+ *                  description: master ID of the smart document
+ *                meta_form:
+ *                  type: string
+ *                  required: true
+ *                  description: metadata for the smart document.
+ *                data_form:
+ *                  type: string
+ *                  required: true
+ *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
+ *                logo_url:
+ *                  type: string
+ *                  required: false
+ *                  description: url of the logo image for qr code section.
+ *                logo:
+ *                  type: file
+ *                  required: false
+ *                  description: File of the logo image for qr code section.
+ *                file:
+ *                  type: file
+ *                  description: File to put metadata.
+ *      responses:
+ *        "200":
+ *          description: return signed docx file
+ */
+router.post(
+  '/docxSmartDocAutoOpen',
+  upload.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'logo', maxCount: 1 },
+  ]),
+  core.docxSmartDocAutoOpen
+);
+
 router.delete('/docassemble', core.deleteDocassemble);
 router.post('/docassemble', core.docassemble);
 

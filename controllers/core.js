@@ -212,6 +212,55 @@ const deleteAzureBlob = (containerName, fileName) =>
     });
   });
 
+const getFilledDocData = (path, meta) => {
+  // Fill merge fields
+  const content = fs.readFileSync(path, 'binary');
+  const zip = new PizZip(content);
+  const doc = new Docxtemplater();
+
+  doc.loadZip(zip);
+  doc.setData(meta);
+  doc.render();
+  const data = doc.getZip().generate({ type: 'nodebuffer' });
+  return data;
+};
+
+const getQRData = async (guid, logoPath) => {
+  // Get QRCode docx file data
+  await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+  const document = new Document();
+  const image1 = Media.addImage(document, fs.readFileSync('qr.png'), 150, 150, {
+    floating: {
+      horizontalPosition: {
+        align: HorizontalPositionAlign.CENTER,
+      },
+      verticalPosition: {
+        align: VerticalPositionAlign.CENTER,
+      },
+      behindDocument: true,
+    },
+  });
+
+  const image2 = Media.addImage(document, fs.readFileSync(logoPath), 50, 50, {
+    floating: {
+      horizontalPosition: {
+        align: HorizontalPositionAlign.CENTER,
+      },
+      verticalPosition: {
+        // offset: 540000,
+        align: VerticalPositionAlign.CENTER,
+      },
+      behindDocument: false,
+    },
+  });
+
+  document.addSection({
+    children: [new Paragraph(image1), new Paragraph(image2)],
+  });
+  const qrData = await Packer.toBuffer(document);
+  return qrData;
+};
+
 exports.analyze = async (req, res) => {
   try {
     const fileData = await readFileAsync(req.file.path);
@@ -431,15 +480,7 @@ exports.doc = async (req, res) => {
 
     const meta = JSON.parse(meta_form);
 
-    // Fill merge fields
-    const content = fs.readFileSync(req.file.path, 'binary');
-    const zip = new PizZip(content);
-    const doc = new Docxtemplater();
-
-    doc.loadZip(zip);
-    doc.setData(meta);
-    doc.render();
-    const docData = doc.getZip().generate({ type: 'nodebuffer' });
+    const docData = getFilledDocData(req.file.path, meta);
 
     // Convert word document to pdf
     const pdfData = await libreConvertAsync(docData, '.pdf', undefined);
@@ -525,34 +566,9 @@ exports.docxSmartdoc = async (req, res) => {
 
     const meta = JSON.parse(meta_form);
 
-    // Fill merge fields
-    const content = fs.readFileSync(req.files.file[0].path, 'binary');
-    const zip = new PizZip(content);
-    const doc = new Docxtemplater();
-
-    doc.loadZip(zip);
-    doc.setData(meta);
-    doc.render();
-    const docData = doc.getZip().generate({ type: 'nodebuffer' });
-
-    fs.writeFileSync('modified/source.docx', docData);
+    const docData = getFilledDocData(req.files.file[0].path, meta);
 
     const guid = uuidv1();
-
-    // Add QR Code into last page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
-    const document = new Document();
-    const image1 = Media.addImage(document, fs.readFileSync('qr.png'), 150, 150, {
-      floating: {
-        horizontalPosition: {
-          align: HorizontalPositionAlign.CENTER,
-        },
-        verticalPosition: {
-          align: VerticalPositionAlign.CENTER,
-        },
-        behindDocument: true,
-      },
-    });
 
     let logoimage = 'integra-qr.png';
     if (logo_url) {
@@ -564,33 +580,12 @@ exports.docxSmartdoc = async (req, res) => {
       logoimage = logoFile.path;
     }
 
-    const image2 = Media.addImage(document, fs.readFileSync(logoimage), 50, 50, {
-      floating: {
-        horizontalPosition: {
-          align: HorizontalPositionAlign.CENTER,
-        },
-        verticalPosition: {
-          // offset: 540000,
-          align: VerticalPositionAlign.CENTER,
-        },
-        behindDocument: false,
-      },
-    });
+    const qrdata = await getQRData(guid, logoimage);
 
-    document.addSection({
-      children: [new Paragraph(image1), new Paragraph(image2)],
-    });
-    const qrdata = await Packer.toBuffer(document);
-    fs.writeFileSync('modified/qr.docx', qrdata);
-
-    const inputFile1 = fs.readFileSync('modified/qr.docx');
-    const inputFile2 = fs.readFileSync('modified/source.docx');
-    const mergedData = await mergeDocx(inputFile1, inputFile2);
+    const mergedData = await mergeDocx(Buffer.from(qrdata), docData);
     fs.writeFileSync('modified/filled.docx', mergedData);
 
-    /**
-     * Unzip docx file
-     */
+    // Unzip docx file
     const directory = await unzipper.Open.file('modified/filled.docx');
     await directory.extract({ path: 'modified/unzipped' });
 
@@ -605,42 +600,30 @@ exports.docxSmartdoc = async (req, res) => {
     const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
 
     const obj = {
-      '@': {
-        xmlns: 'http://schemas.business-integrity.com/dealbuilder/2006/answers',
-      },
+      '@': { xmlns: 'http://schemas.business-integrity.com/dealbuilder/2006/answers' },
       Variable: [],
     };
     Object.keys(meta).forEach(key => {
       obj.Variable.push({
-        '@': {
-          Name: key,
-        },
+        '@': { Name: key },
         Value: meta[key],
       });
     });
     obj.Variable.push({
-      '@': {
-        Name: 'infoJSON',
-      },
+      '@': { Name: 'infoJSON' },
       Value: JSON.stringify(meta),
     });
     obj.Variable.push({
-      '@': {
-        Name: 'formJSON',
-      },
+      '@': { Name: 'formJSON' },
       Value: data_form,
     });
     obj.Variable.push({
-      '@': {
-        Name: 'id',
-      },
+      '@': { Name: 'id' },
       Value: guid,
     });
     if (master_id) {
       obj.Variable.push({
-        '@': {
-          Name: 'master_id',
-        },
+        '@': { Name: 'master_id' },
         Value: master_id,
       });
     }
@@ -705,8 +688,209 @@ exports.docxSmartdoc = async (req, res) => {
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
     fs.rmdirSync('modified/unzipped', { recursive: true });
-    fs.unlinkSync('modified/qr.docx');
-    fs.unlinkSync('modified/source.docx');
+    fs.unlinkSync('modified/filled.docx');
+    if (req.files.file) {
+      fs.unlinkSync(req.files.file[0].path);
+    }
+
+    if (req.files.logo) {
+      fs.unlinkSync(req.files.logo[0].path);
+    }
+
+    const encryptedData = await registerIdentity(fileName, guid);
+
+    // Attach file name to response header
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
+    res.setHeader('file-name', fileName);
+    res.setHeader('id', guid);
+    res.setHeader('hash', encryptedData);
+
+    res.download(`modified/${fileName}`, fileName, () => {
+      fs.unlinkSync(`modified/${fileName}`);
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
+exports.docxSmartDocAutoOpen = async (req, res) => {
+  try {
+    const { master_id, meta_form, data_form, logo_url } = req.body;
+
+    const meta = JSON.parse(meta_form);
+
+    const docData = getFilledDocData(req.files.file[0].path, meta);
+
+    const guid = uuidv1();
+
+    let logoimage = 'integra-qr.png';
+    if (logo_url) {
+      await doRequest(logo_url, 'qr-logo.png');
+      logoimage = 'qr-logo.png';
+    }
+    if (req.files.logo) {
+      const logoFile = req.files.logo[0];
+      logoimage = logoFile.path;
+    }
+
+    const qrdata = await getQRData(guid, logoimage);
+
+    const mergedData = await mergeDocx(Buffer.from(qrdata), docData);
+    fs.writeFileSync('modified/filled.docx', mergedData);
+
+    // Unzip docx file
+    const directory = await unzipper.Open.file('modified/filled.docx');
+    await directory.extract({ path: 'modified/unzipped' });
+
+    /**
+     * Create new item.mxl
+     */
+    if (!fs.existsSync('modified/unzipped/customXml')) {
+      fs.mkdirSync('modified/unzipped/customXml');
+    }
+
+    const files = fs.readdirSync('modified/unzipped/customXml');
+    const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
+
+    const obj = {
+      '@': { xmlns: 'http://schemas.business-integrity.com/dealbuilder/2006/answers' },
+      Variable: [],
+    };
+    Object.keys(meta).forEach(key => {
+      obj.Variable.push({
+        '@': { Name: key },
+        Value: meta[key],
+      });
+    });
+    obj.Variable.push({
+      '@': { Name: 'infoJSON' },
+      Value: JSON.stringify(meta),
+    });
+    obj.Variable.push({
+      '@': { Name: 'formJSON' },
+      Value: data_form,
+    });
+    obj.Variable.push({
+      '@': { Name: 'id' },
+      Value: guid,
+    });
+    if (master_id) {
+      obj.Variable.push({
+        '@': { Name: 'master_id' },
+        Value: master_id,
+      });
+    }
+
+    const xml = js2xmlparser.parse('Session', obj);
+    fs.writeFileSync(`modified/unzipped/customXml/item${itemFiles.length + 1}.xml`, xml);
+
+    /**
+     * Create docProps/custom.xml
+     */
+    if (!fs.existsSync('modified/unzipped/docProps/custom.xml')) {
+      const customObj = {
+        '@': {
+          xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
+          'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+        },
+        property: [],
+      };
+      Object.keys(meta).forEach((key, index) => {
+        customObj.property.push({
+          '@': {
+            xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
+            fmtid: '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}',
+            pid: `${index + 2}`,
+            name: key,
+          },
+          'vt:lpwstr': {
+            '@': {
+              'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+            },
+            '#': meta[key],
+          },
+        });
+      });
+      const customXml = js2xmlparser.parse('Properties', customObj);
+      fs.writeFileSync('modified/unzipped/docProps/custom.xml', customXml);
+
+      // Update [Content_Types].xml
+      const a = fs.readFileSync('modified/unzipped/[Content_Types].xml').toString();
+      const json = parser.toJson(a, { object: true, reversible: true });
+      [
+        {
+          PartName: '/docProps/custom.xml',
+          ContentType: 'application/vnd.openxmlformats-officedocument.custom-properties+xml',
+        },
+        {
+          PartName: '/word/webextensions/taskpanes.xml',
+          ContentType: 'application/vnd.ms-office.webextensiontaskpanes+xml',
+        },
+        {
+          PartName: '/word/webextensions/webextension.xml',
+          ContentType: 'application/vnd.ms-office.webextension+xml',
+        },
+      ].forEach(item => {
+        json.Types.Override.push(item);
+      });
+      fs.writeFileSync('modified/unzipped/[Content_Types].xml', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
+
+      const rels = fs.readFileSync('modified/unzipped/_rels/.rels').toString();
+      const relsJson = parser.toJson(rels, { object: true, reversible: true });
+      relsJson.Relationships.Relationship.push({
+        Type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties',
+        Target: '/docProps/custom.xml',
+        Id: `rId${relsJson.Relationships.Relationship.length + 1}`,
+      });
+      const taskpaneId = uuidv1();
+      relsJson.Relationships.Relationship.push({
+        Type: 'http://schemas.microsoft.com/office/2011/relationships/webextensiontaskpanes',
+        Target: '/word/webextensions/taskpanes.xml',
+        Id: taskpaneId,
+      });
+      fs.writeFileSync('modified/unzipped/_rels/.rels', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
+
+      if (!fs.existsSync('modified/unzipped/word/webextensions/_rels')) {
+        fs.mkdirSync('modified/unzipped/word/webextensions/_rels', { recursive: true });
+      }
+      fs.writeFileSync(
+        'modified/unzipped/word/webextensions/_rels/taskpanes.xml.rels',
+        // eslint-disable-next-line max-len
+        `<?xml version="1.0" encoding="utf-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Type="http://schemas.microsoft.com/office/2011/relationships/webextension" Target="/word/webextensions/webextension.xml" Id="${taskpaneId}" /></Relationships>`
+      );
+
+      fs.writeFileSync(
+        'modified/unzipped/word/webextensions/taskpanes.xml',
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <wetp:taskpanes xmlns:wetp="http://schemas.microsoft.com/office/webextensions/taskpanes/2010/11">
+        <wetp:taskpane dockstate="right" visibility="0" width="350" row="1">
+          <wetp:webextensionref r:id="${taskpaneId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" />
+        </wetp:taskpane>
+      </wetp:taskpanes>`
+      );
+      fs.writeFileSync(
+        'modified/unzipped/word/webextensions/webextension.xml',
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <we:webextension id="${uuidv1()}" xmlns:we="http://schemas.microsoft.com/office/webextensions/webextension/2010/11">
+        <we:reference id="894cdd7a-d434-449d-9245-362748277282" version="1.0.0.0" store="developer" storeType="uploadfiledevcatalog" />
+        <we:alternateReferences />
+        <we:properties>
+          <we:property name="Office.AutoShowTaskpaneWithDocument" value="true" />
+        </we:properties>
+        <we:bindings />
+        <we:snapshot xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" />
+      </we:webextension>`
+      );
+    }
+
+    /**
+     * Zip
+     */
+    const fileName = `${req.files.file[0].originalname.substring(0, req.files.file[0].originalname.length - 5)}_SmartDoc.docx`;
+    const buffer = await zipdir('modified/unzipped');
+    fs.writeFileSync(`modified/${fileName}`, buffer);
+
+    fs.rmdirSync('modified/unzipped', { recursive: true });
     fs.unlinkSync('modified/filled.docx');
     if (req.files.file) {
       fs.unlinkSync(req.files.file[0].path);
