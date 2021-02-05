@@ -298,15 +298,21 @@ exports.analyzeDocx = async (req, res) => {
       const files = fs.readdirSync('modified/unzipped/customXml');
       const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
 
-      const a = fs.readFileSync(`modified/unzipped/customXml/item${itemFiles.length}.xml`).toString();
-      const json = parser.toJson(a, { object: true });
+      let index = itemFiles.length;
       const meta = {};
-      if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
-        json.Session.Variable &&
-          json.Session.Variable.reduce((acc, cur) => {
-            acc[cur.Name] = cur.Value;
-            return acc;
-          }, meta);
+      while (index >= 0) {
+        const a = fs.readFileSync(`modified/unzipped/customXml/item${index}.xml`).toString();
+        const json = parser.toJson(a, { object: true });
+        if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
+          json.Session.Variable &&
+            json.Session.Variable.reduce((acc, cur) => {
+              acc[cur.Name] = cur.Value;
+              return acc;
+            }, meta);
+          break;
+        } else {
+          index--;
+        }
       }
 
       fs.rmdirSync('modified/unzipped', { recursive: true });
