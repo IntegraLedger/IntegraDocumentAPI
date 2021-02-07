@@ -333,7 +333,7 @@ exports.analyzeDocx = async (req, res) => {
 
 exports.pdf = async (req, res) => {
   try {
-    const { master_id, cartridge_type: cartridgeType, meta_form, data_form } = req.body;
+    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr } = req.body;
     const meta = JSON.parse(meta_form);
     const { pass_phrase } = meta;
     delete meta.pass_phrase;
@@ -407,40 +407,42 @@ exports.pdf = async (req, res) => {
     meta.id = guid;
     fillForm(writer, meta);
 
-    // Add QR Code into first page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
-    const pageBox = reader.parsePage(0).getMediaBox();
-    const pageWidth = pageBox[2] - pageBox[0];
-    const pageHeight = pageBox[3] - pageBox[1];
-    const pageModifier = new hummus.PDFPageModifier(writer, 0, true);
-    const ctx = pageModifier.startContext().getContext();
-    ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
-      transformation: {
-        width: 100,
-        height: 100,
-        fit: 'always',
-      },
-    });
-
-    if (req.file && meta.organization_logo) {
-      const base64Data = meta.organization_logo.split(',')[1];
-      await fs.writeFileSync('qr-logo.png', base64Data, {
-        encoding: 'base64',
+    if (!hide_qr) {
+      // Add QR Code into first page
+      await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+      const pageBox = reader.parsePage(0).getMediaBox();
+      const pageWidth = pageBox[2] - pageBox[0];
+      const pageHeight = pageBox[3] - pageBox[1];
+      const pageModifier = new hummus.PDFPageModifier(writer, 0, true);
+      const ctx = pageModifier.startContext().getContext();
+      ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
+        transformation: {
+          width: 100,
+          height: 100,
+          fit: 'always',
+        },
       });
-    }
 
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, req.file && meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
-      transformation: {
-        width: 30,
-        height: 30,
-        fit: 'always',
-      },
-    });
-    pageModifier.endContext().writePage();
-    pageModifier
-      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
-      .endContext()
-      .writePage();
+      if (req.file && meta.organization_logo) {
+        const base64Data = meta.organization_logo.split(',')[1];
+        await fs.writeFileSync('qr-logo.png', base64Data, {
+          encoding: 'base64',
+        });
+      }
+
+      ctx.drawImage(pageWidth - 65, pageHeight - 65, req.file && meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
+        transformation: {
+          width: 30,
+          height: 30,
+          fit: 'always',
+        },
+      });
+      pageModifier.endContext().writePage();
+      pageModifier
+        .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+        .endContext()
+        .writePage();
+    }
     writer.end();
 
     // Generate file name (Attach 'SmartDoc' to original filename)
@@ -482,7 +484,7 @@ exports.pdf = async (req, res) => {
 
 exports.doc = async (req, res) => {
   try {
-    const { master_id, meta_form, data_form } = req.body;
+    const { master_id, meta_form, data_form, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
 
@@ -509,40 +511,42 @@ exports.doc = async (req, res) => {
     infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
 
-    // Add QR Code into first page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
-    const pageBox = reader.parsePage(0).getMediaBox();
-    const pageWidth = pageBox[2] - pageBox[0];
-    const pageHeight = pageBox[3] - pageBox[1];
-    const pageModifier = new hummus.PDFPageModifier(writer, 0, true);
-    const ctx = pageModifier.startContext().getContext();
-    ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
-      transformation: {
-        width: 100,
-        height: 100,
-        fit: 'always',
-      },
-    });
-
-    if (meta.organization_logo) {
-      const base64Data = meta.organization_logo.split(',')[1];
-      await fs.writeFileSync('qr-logo.png', base64Data, {
-        encoding: 'base64',
+    if (!hide_qr) {
+      // Add QR Code into first page
+      await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+      const pageBox = reader.parsePage(0).getMediaBox();
+      const pageWidth = pageBox[2] - pageBox[0];
+      const pageHeight = pageBox[3] - pageBox[1];
+      const pageModifier = new hummus.PDFPageModifier(writer, 0, true);
+      const ctx = pageModifier.startContext().getContext();
+      ctx.drawImage(pageWidth - 100, pageHeight - 100, 'qr.png', {
+        transformation: {
+          width: 100,
+          height: 100,
+          fit: 'always',
+        },
       });
-    }
 
-    ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
-      transformation: {
-        width: 30,
-        height: 30,
-        fit: 'always',
-      },
-    });
-    pageModifier.endContext().writePage();
-    pageModifier
-      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
-      .endContext()
-      .writePage();
+      if (meta.organization_logo) {
+        const base64Data = meta.organization_logo.split(',')[1];
+        await fs.writeFileSync('qr-logo.png', base64Data, {
+          encoding: 'base64',
+        });
+      }
+
+      ctx.drawImage(pageWidth - 65, pageHeight - 65, meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
+        transformation: {
+          width: 30,
+          height: 30,
+          fit: 'always',
+        },
+      });
+      pageModifier.endContext().writePage();
+      pageModifier
+        .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+        .endContext()
+        .writePage();
+    }
     writer.end();
 
     // Generate file name (Attach 'SmartDoc' to original filename)
@@ -568,7 +572,7 @@ exports.doc = async (req, res) => {
 
 exports.docxSmartdoc = async (req, res) => {
   try {
-    const { master_id, meta_form, data_form, logo_url } = req.body;
+    const { master_id, meta_form, data_form, logo_url, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
 
@@ -576,20 +580,23 @@ exports.docxSmartdoc = async (req, res) => {
 
     const guid = uuidv1();
 
-    let logoimage = 'integra-qr.png';
-    if (logo_url) {
-      await doRequest(logo_url, 'qr-logo.png');
-      logoimage = 'qr-logo.png';
-    }
-    if (req.files.logo) {
-      const logoFile = req.files.logo[0];
-      logoimage = logoFile.path;
-    }
+    let mergedData;
+    if (!hide_qr) {
+      let logoimage = 'integra-qr.png';
+      if (logo_url) {
+        await doRequest(logo_url, 'qr-logo.png');
+        logoimage = 'qr-logo.png';
+      }
+      if (req.files.logo) {
+        const logoFile = req.files.logo[0];
+        logoimage = logoFile.path;
+      }
 
-    const qrdata = await getQRData(guid, logoimage);
+      const qrdata = await getQRData(guid, logoimage);
 
-    const mergedData = await mergeDocx(Buffer.from(qrdata), docData);
-    fs.writeFileSync('modified/filled.docx', mergedData);
+      mergedData = await mergeDocx(Buffer.from(qrdata), docData);
+    }
+    fs.writeFileSync('modified/filled.docx', hide_qr ? docData : mergedData);
 
     // Unzip docx file
     const directory = await unzipper.Open.file('modified/filled.docx');
@@ -640,33 +647,33 @@ exports.docxSmartdoc = async (req, res) => {
     /**
      * Create docProps/custom.xml
      */
-    if (!fs.existsSync('modified/unzipped/docProps/custom.xml')) {
-      const customObj = {
+    const isCustomXMLExist = fs.existsSync('modified/unzipped/docProps/custom.xml');
+    const customObj = {
+      '@': {
+        xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
+        'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+      },
+      property: [],
+    };
+    Object.keys(meta).forEach((key, index) => {
+      customObj.property.push({
         '@': {
           xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
-          'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+          fmtid: '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}',
+          pid: `${index + 2}`,
+          name: key,
         },
-        property: [],
-      };
-      Object.keys(meta).forEach((key, index) => {
-        customObj.property.push({
+        'vt:lpwstr': {
           '@': {
-            xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
-            fmtid: '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}',
-            pid: `${index + 2}`,
-            name: key,
+            'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
           },
-          'vt:lpwstr': {
-            '@': {
-              'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
-            },
-            '#': meta[key],
-          },
-        });
+          '#': meta[key],
+        },
       });
-      const customXml = js2xmlparser.parse('Properties', customObj);
-      fs.writeFileSync('modified/unzipped/docProps/custom.xml', customXml);
-
+    });
+    const customXml = js2xmlparser.parse('Properties', customObj);
+    fs.writeFileSync('modified/unzipped/docProps/custom.xml', customXml);
+    if (!isCustomXMLExist) {
       // Update [Content_Types].xml
       const a = fs.readFileSync('modified/unzipped/[Content_Types].xml').toString();
       const json = parser.toJson(a, { object: true, reversible: true });
@@ -721,7 +728,7 @@ exports.docxSmartdoc = async (req, res) => {
 
 exports.docxSmartDocAutoOpen = async (req, res) => {
   try {
-    const { master_id, meta_form, data_form, logo_url } = req.body;
+    const { master_id, meta_form, data_form, logo_url, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
 
@@ -729,20 +736,23 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
 
     const guid = uuidv1();
 
-    let logoimage = 'integra-qr.png';
-    if (logo_url) {
-      await doRequest(logo_url, 'qr-logo.png');
-      logoimage = 'qr-logo.png';
-    }
-    if (req.files.logo) {
-      const logoFile = req.files.logo[0];
-      logoimage = logoFile.path;
-    }
+    let mergedData;
+    if (!hide_qr) {
+      let logoimage = 'integra-qr.png';
+      if (logo_url) {
+        await doRequest(logo_url, 'qr-logo.png');
+        logoimage = 'qr-logo.png';
+      }
+      if (req.files.logo) {
+        const logoFile = req.files.logo[0];
+        logoimage = logoFile.path;
+      }
 
-    const qrdata = await getQRData(guid, logoimage);
+      const qrdata = await getQRData(guid, logoimage);
 
-    const mergedData = await mergeDocx(Buffer.from(qrdata), docData);
-    fs.writeFileSync('modified/filled.docx', mergedData);
+      mergedData = await mergeDocx(Buffer.from(qrdata), docData);
+    }
+    fs.writeFileSync('modified/filled.docx', hide_qr ? docData : mergedData);
 
     // Unzip docx file
     const directory = await unzipper.Open.file('modified/filled.docx');
@@ -793,90 +803,96 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
     /**
      * Create docProps/custom.xml
      */
-    if (!fs.existsSync('modified/unzipped/docProps/custom.xml')) {
-      const customObj = {
+    const customObj = {
+      '@': {
+        xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
+        'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+      },
+      property: [],
+    };
+    Object.keys(meta).forEach((key, index) => {
+      customObj.property.push({
         '@': {
           xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
-          'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+          fmtid: '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}',
+          pid: `${index + 2}`,
+          name: key,
         },
-        property: [],
-      };
-      Object.keys(meta).forEach((key, index) => {
-        customObj.property.push({
+        'vt:lpwstr': {
           '@': {
-            xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
-            fmtid: '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}',
-            pid: `${index + 2}`,
-            name: key,
+            'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
           },
-          'vt:lpwstr': {
-            '@': {
-              'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
-            },
-            '#': meta[key],
-          },
-        });
+          '#': meta[key],
+        },
       });
-      const customXml = js2xmlparser.parse('Properties', customObj);
-      fs.writeFileSync('modified/unzipped/docProps/custom.xml', customXml);
-
-      // Update [Content_Types].xml
-      const a = fs.readFileSync('modified/unzipped/[Content_Types].xml').toString();
-      const json = parser.toJson(a, { object: true, reversible: true });
-      [
-        {
-          PartName: '/docProps/custom.xml',
-          ContentType: 'application/vnd.openxmlformats-officedocument.custom-properties+xml',
-        },
-        {
-          PartName: '/word/webextensions/taskpanes.xml',
-          ContentType: 'application/vnd.ms-office.webextensiontaskpanes+xml',
-        },
-        {
-          PartName: '/word/webextensions/webextension.xml',
-          ContentType: 'application/vnd.ms-office.webextension+xml',
-        },
-      ].forEach(item => {
+    });
+    const customXml = js2xmlparser.parse('Properties', customObj);
+    fs.writeFileSync('modified/unzipped/docProps/custom.xml', customXml);
+    // Update [Content_Types].xml
+    const a = fs.readFileSync('modified/unzipped/[Content_Types].xml').toString();
+    const json = parser.toJson(a, { object: true, reversible: true });
+    [
+      {
+        PartName: '/docProps/custom.xml',
+        ContentType: 'application/vnd.openxmlformats-officedocument.custom-properties+xml',
+      },
+      {
+        PartName: '/word/webextensions/taskpanes.xml',
+        ContentType: 'application/vnd.ms-office.webextensiontaskpanes+xml',
+      },
+      {
+        PartName: '/word/webextensions/webextension.xml',
+        ContentType: 'application/vnd.ms-office.webextension+xml',
+      },
+    ].forEach(item => {
+      if (json.Types.Override.findIndex(o => o.PartName === item.PartName) === -1) {
         json.Types.Override.push(item);
-      });
-      fs.writeFileSync('modified/unzipped/[Content_Types].xml', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
+      }
+    });
+    fs.writeFileSync('modified/unzipped/[Content_Types].xml', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
 
-      const rels = fs.readFileSync('modified/unzipped/_rels/.rels').toString();
-      const relsJson = parser.toJson(rels, { object: true, reversible: true });
-      relsJson.Relationships.Relationship.push({
+    const rels = fs.readFileSync('modified/unzipped/_rels/.rels').toString();
+    const relsJson = parser.toJson(rels, { object: true, reversible: true });
+    const taskpaneId = uuidv1();
+    [
+      {
         Type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties',
         Target: '/docProps/custom.xml',
         Id: `rId${relsJson.Relationships.Relationship.length + 1}`,
-      });
-      const taskpaneId = uuidv1();
-      relsJson.Relationships.Relationship.push({
+      },
+      {
         Type: 'http://schemas.microsoft.com/office/2011/relationships/webextensiontaskpanes',
         Target: '/word/webextensions/taskpanes.xml',
         Id: taskpaneId,
-      });
-      fs.writeFileSync('modified/unzipped/_rels/.rels', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
-
-      if (!fs.existsSync('modified/unzipped/word/webextensions/_rels')) {
-        fs.mkdirSync('modified/unzipped/word/webextensions/_rels', { recursive: true });
+      },
+    ].forEach(item => {
+      if (relsJson.Relationships.Relationship.findIndex(r => r.Type === item.Type) === -1) {
+        relsJson.Relationships.Relationship.push(item);
       }
-      fs.writeFileSync(
-        'modified/unzipped/word/webextensions/_rels/taskpanes.xml.rels',
-        // eslint-disable-next-line max-len
-        `<?xml version="1.0" encoding="utf-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Type="http://schemas.microsoft.com/office/2011/relationships/webextension" Target="/word/webextensions/webextension.xml" Id="${taskpaneId}" /></Relationships>`
-      );
+    });
+    fs.writeFileSync('modified/unzipped/_rels/.rels', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
 
-      fs.writeFileSync(
-        'modified/unzipped/word/webextensions/taskpanes.xml',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    if (!fs.existsSync('modified/unzipped/word/webextensions/_rels')) {
+      fs.mkdirSync('modified/unzipped/word/webextensions/_rels', { recursive: true });
+    }
+    fs.writeFileSync(
+      'modified/unzipped/word/webextensions/_rels/taskpanes.xml.rels',
+      // eslint-disable-next-line max-len
+      `<?xml version="1.0" encoding="utf-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Type="http://schemas.microsoft.com/office/2011/relationships/webextension" Target="/word/webextensions/webextension.xml" Id="${taskpaneId}" /></Relationships>`
+    );
+
+    fs.writeFileSync(
+      'modified/unzipped/word/webextensions/taskpanes.xml',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <wetp:taskpanes xmlns:wetp="http://schemas.microsoft.com/office/webextensions/taskpanes/2010/11">
         <wetp:taskpane dockstate="right" visibility="0" width="350" row="1">
           <wetp:webextensionref r:id="${taskpaneId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" />
         </wetp:taskpane>
       </wetp:taskpanes>`
-      );
-      fs.writeFileSync(
-        'modified/unzipped/word/webextensions/webextension.xml',
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    );
+    fs.writeFileSync(
+      'modified/unzipped/word/webextensions/webextension.xml',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <we:webextension id="${uuidv1()}" xmlns:we="http://schemas.microsoft.com/office/webextensions/webextension/2010/11">
         <we:reference id="894cdd7a-d434-449d-9245-362748277282" version="1.0.0.0" store="developer" storeType="uploadfiledevcatalog" />
         <we:alternateReferences />
@@ -886,8 +902,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
         <we:bindings />
         <we:snapshot xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" />
       </we:webextension>`
-      );
-    }
+    );
 
     /**
      * Zip
@@ -896,7 +911,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
     const buffer = await zipdir('modified/unzipped');
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
-    fs.rmdirSync('modified/unzipped', { recursive: true });
+    // fs.rmdirSync('modified/unzipped', { recursive: true });
     fs.unlinkSync('modified/filled.docx');
     if (req.files.file) {
       fs.unlinkSync(req.files.file[0].path);
