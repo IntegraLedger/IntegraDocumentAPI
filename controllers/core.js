@@ -911,7 +911,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
     const buffer = await zipdir('modified/unzipped');
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
-    // fs.rmdirSync('modified/unzipped', { recursive: true });
+    fs.rmdirSync('modified/unzipped', { recursive: true });
     fs.unlinkSync('modified/filled.docx');
     if (req.files.file) {
       fs.unlinkSync(req.files.file[0].path);
