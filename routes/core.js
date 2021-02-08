@@ -111,6 +111,9 @@ router.post('/analyzeDocx', upload.single('file'), core.analyzeDocx);
  *                file:
  *                  type: file
  *                  description: File to put metadata. not necessary for the cartridge creation.
+ *                hide_qr:
+ *                  type: boolean
+ *                  description: hide qr code if this field is set true (optional)
  *      parameters:
  *        - in: query
  *          name: type
@@ -151,6 +154,9 @@ router.post('/pdf', upload.single('file'), core.pdf);
  *                file:
  *                  type: file
  *                  description: File to put metadata.
+ *                hide_qr:
+ *                  type: boolean
+ *                  description: hide qr code if this field is set true (optional)
  *      responses:
  *        "200":
  *          description: return signed docx file
@@ -193,6 +199,9 @@ router.post('/doc', upload.single('file'), core.doc);
  *                file:
  *                  type: file
  *                  description: File to put metadata.
+ *                hide_qr:
+ *                  type: boolean
+ *                  description: hide qr code if this field is set true (optional)
  *      responses:
  *        "200":
  *          description: return signed docx file
@@ -242,6 +251,9 @@ router.post(
  *                file:
  *                  type: file
  *                  description: File to put metadata.
+ *                hide_qr:
+ *                  type: boolean
+ *                  description: hide qr code if this field is set true (optional)
  *      responses:
  *        "200":
  *          description: return signed docx file
