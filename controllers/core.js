@@ -293,15 +293,16 @@ exports.analyzeDocx = async (req, res) => {
     if (responseJson.exists) {
       // Unzip docx file
       const directory = await unzipper.Open.file(req.file.path);
-      await directory.extract({ path: 'modified/unzipped' });
+      const unzippedName = uuidv1();
+      await directory.extract({ path: `modified/${unzippedName}` });
 
-      const files = fs.readdirSync('modified/unzipped/customXml');
+      const files = fs.readdirSync(`modified/${unzippedName}/customXml`);
       const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
 
       let index = itemFiles.length;
       const meta = {};
       while (index >= 0) {
-        const a = fs.readFileSync(`modified/unzipped/customXml/item${index}.xml`).toString();
+        const a = fs.readFileSync(`modified/${unzippedName}/customXml/item${index}.xml`).toString();
         const json = parser.toJson(a, { object: true });
         if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
           json.Session.Variable &&
@@ -315,7 +316,7 @@ exports.analyzeDocx = async (req, res) => {
         }
       }
 
-      fs.rmdirSync('modified/unzipped', { recursive: true });
+      fs.rmdirSync(`modified/${unzippedName}`, { recursive: true });
       result = {
         result: meta,
         creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate,
@@ -600,16 +601,17 @@ exports.docxSmartdoc = async (req, res) => {
 
     // Unzip docx file
     const directory = await unzipper.Open.file('modified/filled.docx');
-    await directory.extract({ path: 'modified/unzipped' });
+    const unzippedName = uuidv1();
+    await directory.extract({ path: `modified/${unzippedName}` });
 
     /**
      * Create new item.mxl
      */
-    if (!fs.existsSync('modified/unzipped/customXml')) {
-      fs.mkdirSync('modified/unzipped/customXml');
+    if (!fs.existsSync(`modified/${unzippedName}/customXml`)) {
+      fs.mkdirSync(`modified/${unzippedName}/customXml`);
     }
 
-    const files = fs.readdirSync('modified/unzipped/customXml');
+    const files = fs.readdirSync(`modified/${unzippedName}/customXml`);
     const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
 
     const obj = {
@@ -642,12 +644,12 @@ exports.docxSmartdoc = async (req, res) => {
     }
 
     const xml = js2xmlparser.parse('Session', obj);
-    fs.writeFileSync(`modified/unzipped/customXml/item${itemFiles.length + 1}.xml`, xml);
+    fs.writeFileSync(`modified/${unzippedName}/customXml/item${itemFiles.length + 1}.xml`, xml);
 
     /**
      * Create docProps/custom.xml
      */
-    const isCustomXMLExist = fs.existsSync('modified/unzipped/docProps/custom.xml');
+    const isCustomXMLExist = fs.existsSync(`modified/${unzippedName}/docProps/custom.xml`);
     const customObj = {
       '@': {
         xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
@@ -672,35 +674,35 @@ exports.docxSmartdoc = async (req, res) => {
       });
     });
     const customXml = js2xmlparser.parse('Properties', customObj);
-    fs.writeFileSync('modified/unzipped/docProps/custom.xml', customXml);
+    fs.writeFileSync(`modified/${unzippedName}/docProps/custom.xml`, customXml);
     if (!isCustomXMLExist) {
       // Update [Content_Types].xml
-      const a = fs.readFileSync('modified/unzipped/[Content_Types].xml').toString();
+      const a = fs.readFileSync(`modified/${unzippedName}/[Content_Types].xml`).toString();
       const json = parser.toJson(a, { object: true, reversible: true });
       json.Types.Override.push({
         PartName: '/docProps/custom.xml',
         ContentType: 'application/vnd.openxmlformats-officedocument.custom-properties+xml',
       });
-      fs.writeFileSync('modified/unzipped/[Content_Types].xml', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
+      fs.writeFileSync(`modified/${unzippedName}/[Content_Types].xml`, `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
 
-      const rels = fs.readFileSync('modified/unzipped/_rels/.rels').toString();
+      const rels = fs.readFileSync(`modified/${unzippedName}/_rels/.rels`).toString();
       const relsJson = parser.toJson(rels, { object: true, reversible: true });
       relsJson.Relationships.Relationship.push({
         Type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties',
         Target: '/docProps/custom.xml',
         Id: `rId${relsJson.Relationships.Relationship.length + 1}`,
       });
-      fs.writeFileSync('modified/unzipped/_rels/.rels', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
+      fs.writeFileSync(`modified/${unzippedName}/_rels/.rels`, `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
     }
 
     /**
      * Zip
      */
     const fileName = `${req.files.file[0].originalname.substring(0, req.files.file[0].originalname.length - 5)}_SmartDoc.docx`;
-    const buffer = await zipdir('modified/unzipped');
+    const buffer = await zipdir(`modified/${unzippedName}`);
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
-    fs.rmdirSync('modified/unzipped', { recursive: true });
+    fs.rmdirSync(`modified/${unzippedName}`, { recursive: true });
     fs.unlinkSync('modified/filled.docx');
     if (req.files.file) {
       fs.unlinkSync(req.files.file[0].path);
@@ -756,16 +758,17 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
 
     // Unzip docx file
     const directory = await unzipper.Open.file('modified/filled.docx');
-    await directory.extract({ path: 'modified/unzipped' });
+    const unzippedName = uuidv1();
+    await directory.extract({ path: `modified/${unzippedName}` });
 
     /**
      * Create new item.mxl
      */
-    if (!fs.existsSync('modified/unzipped/customXml')) {
-      fs.mkdirSync('modified/unzipped/customXml');
+    if (!fs.existsSync(`modified/${unzippedName}/customXml`)) {
+      fs.mkdirSync(`modified/${unzippedName}/customXml`);
     }
 
-    const files = fs.readdirSync('modified/unzipped/customXml');
+    const files = fs.readdirSync(`modified/${unzippedName}/customXml`);
     const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
 
     const obj = {
@@ -798,7 +801,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
     }
 
     const xml = js2xmlparser.parse('Session', obj);
-    fs.writeFileSync(`modified/unzipped/customXml/item${itemFiles.length + 1}.xml`, xml);
+    fs.writeFileSync(`modified/${unzippedName}/customXml/item${itemFiles.length + 1}.xml`, xml);
 
     /**
      * Create docProps/custom.xml
@@ -827,9 +830,9 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
       });
     });
     const customXml = js2xmlparser.parse('Properties', customObj);
-    fs.writeFileSync('modified/unzipped/docProps/custom.xml', customXml);
+    fs.writeFileSync(`modified/${unzippedName}/docProps/custom.xml`, customXml);
     // Update [Content_Types].xml
-    const a = fs.readFileSync('modified/unzipped/[Content_Types].xml').toString();
+    const a = fs.readFileSync(`modified/${unzippedName}/[Content_Types].xml`).toString();
     const json = parser.toJson(a, { object: true, reversible: true });
     [
       {
@@ -849,9 +852,9 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
         json.Types.Override.push(item);
       }
     });
-    fs.writeFileSync('modified/unzipped/[Content_Types].xml', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
+    fs.writeFileSync(`modified/${unzippedName}/[Content_Types].xml`, `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
 
-    const rels = fs.readFileSync('modified/unzipped/_rels/.rels').toString();
+    const rels = fs.readFileSync(`modified/${unzippedName}/_rels/.rels`).toString();
     const relsJson = parser.toJson(rels, { object: true, reversible: true });
     const taskpaneId = uuidv1();
     [
@@ -870,19 +873,19 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
         relsJson.Relationships.Relationship.push(item);
       }
     });
-    fs.writeFileSync('modified/unzipped/_rels/.rels', `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
+    fs.writeFileSync(`modified/${unzippedName}/_rels/.rels`, `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
 
-    if (!fs.existsSync('modified/unzipped/word/webextensions/_rels')) {
-      fs.mkdirSync('modified/unzipped/word/webextensions/_rels', { recursive: true });
+    if (!fs.existsSync(`modified/${unzippedName}/word/webextensions/_rels`)) {
+      fs.mkdirSync(`modified/${unzippedName}/word/webextensions/_rels`, { recursive: true });
     }
     fs.writeFileSync(
-      'modified/unzipped/word/webextensions/_rels/taskpanes.xml.rels',
+      `modified/${unzippedName}/word/webextensions/_rels/taskpanes.xml.rels`,
       // eslint-disable-next-line max-len
       `<?xml version="1.0" encoding="utf-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Type="http://schemas.microsoft.com/office/2011/relationships/webextension" Target="/word/webextensions/webextension.xml" Id="${taskpaneId}" /></Relationships>`
     );
 
     fs.writeFileSync(
-      'modified/unzipped/word/webextensions/taskpanes.xml',
+      `modified/${unzippedName}/word/webextensions/taskpanes.xml`,
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <wetp:taskpanes xmlns:wetp="http://schemas.microsoft.com/office/webextensions/taskpanes/2010/11">
         <wetp:taskpane dockstate="right" visibility="0" width="350" row="1">
@@ -891,7 +894,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
       </wetp:taskpanes>`
     );
     fs.writeFileSync(
-      'modified/unzipped/word/webextensions/webextension.xml',
+      `modified/${unzippedName}/word/webextensions/webextension.xml`,
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <we:webextension id="${uuidv1()}" xmlns:we="http://schemas.microsoft.com/office/webextensions/webextension/2010/11">
         <we:reference id="894cdd7a-d434-449d-9245-362748277282" version="1.0.0.0" store="developer" storeType="uploadfiledevcatalog" />
@@ -908,10 +911,10 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
      * Zip
      */
     const fileName = `${req.files.file[0].originalname.substring(0, req.files.file[0].originalname.length - 5)}_SmartDoc.docx`;
-    const buffer = await zipdir('modified/unzipped');
+    const buffer = await zipdir(`modified/${unzippedName}`);
     fs.writeFileSync(`modified/${fileName}`, buffer);
 
-    fs.rmdirSync('modified/unzipped', { recursive: true });
+    fs.rmdirSync(`modified/${unzippedName}`, { recursive: true });
     fs.unlinkSync('modified/filled.docx');
     if (req.files.file) {
       fs.unlinkSync(req.files.file[0].path);
