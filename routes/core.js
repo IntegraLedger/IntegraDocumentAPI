@@ -79,6 +79,7 @@ router.post('/analyze', upload.single('file'), core.analyze);
  *                    type: string
  */
 router.post('/analyzeDocx', upload.single('file'), core.analyzeDocx);
+router.post('/analyzeDocxNohash', upload.single('file'), core.analyzeDocxNohash);
 
 /**
  * @swagger

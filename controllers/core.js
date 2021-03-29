@@ -332,6 +332,58 @@ exports.analyzeDocx = async (req, res) => {
   }
 };
 
+exports.analyzeDocxNohash = async (req, res) => {
+  try {
+    // Unzip docx file
+    const directory = await unzipper.Open.file(req.file.path);
+    const unzippedName = uuidv1();
+    await directory.extract({ path: `modified/${unzippedName}` });
+
+    const files = fs.readdirSync(`modified/${unzippedName}/customXml`);
+    const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
+
+    let index = itemFiles.length;
+    const meta = {};
+    while (index >= 0) {
+      const a = fs.readFileSync(`modified/${unzippedName}/customXml/item${index}.xml`).toString();
+      const json = parser.toJson(a, { object: true });
+      if (json.Session && json.Session.xmlns === 'http://schemas.business-integrity.com/dealbuilder/2006/answers') {
+        const specialKeys = [];
+        json.Session.Variable &&
+          json.Session.Variable.reduce((acc, cur) => {
+            if (acc[cur.Name]) {
+              if (specialKeys.findIndex(elem => elem === cur.Name) === -1) specialKeys.push(cur.Name);
+              if (acc[cur.Name] instanceof Array) acc[cur.Name].push(cur.Value);
+              else acc[cur.Name] = [acc[cur.Name], cur.Value];
+            } else acc[cur.Name] = cur.Value;
+            return acc;
+          }, meta);
+        specialKeys.forEach(key => {
+          meta[key].forEach((val, ind) => {
+            meta[`${key}${ind + 1}`] = val;
+          });
+          delete meta[key];
+        });
+        break;
+      } else {
+        index--;
+      }
+    }
+
+    fs.rmdirSync(`modified/${unzippedName}`, { recursive: true });
+    result = {
+      result: meta,
+      // creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate,
+    };
+
+    fs.unlinkSync(req.file.path);
+
+    res.send(result);
+  } catch (err) {
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
 exports.pdf = async (req, res) => {
   try {
     const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr } = req.body;
