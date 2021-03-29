@@ -7,8 +7,6 @@ const unzipper = require('unzipper');
 const zipdir = require('zip-dir');
 const parser = require('xml2json');
 const js2xmlparser = require('js2xmlparser');
-const CloudmersiveConvertApiClient = require('cloudmersive-convert-api-client');
-const { Document, HorizontalPositionAlign, Media, Packer, Paragraph, VerticalPositionAlign } = require('docx');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
@@ -22,6 +20,18 @@ const HummusRecipe = require('hummus-recipe');
 const hummus = require('hummus');
 const PizZip = require('pizzip');
 const Docxtemplater = require('docxtemplater');
+const JSZip = require('jszip');
+const { createCanvas, loadImage } = require('canvas');
+const ImageModule = require('docxtemplater-image-module-free');
+const opts = {};
+opts.centered = false;
+opts.fileType = 'docx';
+opts.getImage = function (tagValue, tagName) {
+  return fs.readFileSync(tagValue);
+};
+opts.getSize = function (img, tagValue, tagName) {
+  return [200, 200];
+};
 const libre = require('libreoffice-convert');
 
 const libreConvertAsync = promisify(libre.convert);
@@ -150,22 +160,6 @@ const decrypt = text => {
   return decrypted.toString();
 };
 
-const mergeDocx = (inputFile1, inputFile2) =>
-  new Promise((resolve, reject) => {
-    const defaultClient = CloudmersiveConvertApiClient.ApiClient.instance;
-    const Apikey = defaultClient.authentications.Apikey;
-    Apikey.apiKey = process.env.CLOUDMERSIVE_KEY;
-    Apikey.apiKeyPrefix = null;
-    const apiInstance = new CloudmersiveConvertApiClient.MergeDocumentApi();
-    const callback = function (error, data, response) {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(data);
-      }
-    };
-    apiInstance.mergeDocumentDocx(inputFile1, inputFile2, callback);
-  });
 const doRequest = (url, filename) => {
   const proto = url.startsWith('https') ? https : http;
   return new Promise((resolve, reject) => {
@@ -225,40 +219,37 @@ const getFilledDocData = (path, meta) => {
   return data;
 };
 
-const getQRData = async (guid, logoPath) => {
-  // Get QRCode docx file data
-  await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
-  const document = new Document();
-  const image1 = Media.addImage(document, fs.readFileSync('qr.png'), 150, 150, {
-    floating: {
-      horizontalPosition: {
-        align: HorizontalPositionAlign.CENTER,
-      },
-      verticalPosition: {
-        align: VerticalPositionAlign.CENTER,
-      },
-      behindDocument: true,
+const getHeaderTextAddedDoc = async docData => {
+  const originZip = await JSZip.loadAsync(docData);
+
+  const originDocumentFile = originZip.file(/^word\/document[0-9]*.xml$/)[0];
+  let originDocumentXml = await originDocumentFile.async('string');
+  const startIndex = originDocumentXml.indexOf('<w:body>') + 8;
+  originDocumentXml =
+    originDocumentXml.slice(0, startIndex) +
+    '<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t xml:space="preserve">{%image}</w:t></w:r></w:p>' +
+    originDocumentXml.slice(startIndex);
+  originZip.file(originDocumentFile.name, originDocumentXml);
+
+  const updatedData = await originZip.generateAsync({ type: 'nodebuffer' });
+  return updatedData;
+};
+
+const generateQRData = async (guid, logoPath) => {
+  const canvas = createCanvas(200, 200);
+  QRCode.toCanvas(canvas, `${process.env.API_URL}/QRVerify/${guid}`, {
+    errorCorrectionLevel: 'H',
+    margin: 1,
+    color: {
+      dark: '#000000',
+      light: '#ffffff',
     },
   });
 
-  const image2 = Media.addImage(document, fs.readFileSync(logoPath), 50, 50, {
-    floating: {
-      horizontalPosition: {
-        align: HorizontalPositionAlign.CENTER,
-      },
-      verticalPosition: {
-        // offset: 540000,
-        align: VerticalPositionAlign.CENTER,
-      },
-      behindDocument: false,
-    },
-  });
-
-  document.addSection({
-    children: [new Paragraph(image1), new Paragraph(image2)],
-  });
-  const qrData = await Packer.toBuffer(document);
-  return qrData;
+  const ctx = canvas.getContext('2d');
+  const img = await loadImage(logoPath);
+  ctx.drawImage(img, 75, 75, 50, 50);
+  fs.writeFileSync('qr.png', canvas.toBuffer());
 };
 
 exports.analyze = async (req, res) => {
@@ -656,9 +647,14 @@ exports.docxSmartdoc = async (req, res) => {
         logoimage = logoFile.path;
       }
 
-      const qrdata = await getQRData(guid, logoimage);
+      await generateQRData(guid, logoimage);
 
-      mergedData = await mergeDocx(Buffer.from(qrdata), docData);
+      const headerAddedData = await getHeaderTextAddedDoc(docData);
+      const zip = new PizZip(headerAddedData);
+      const imageModule = new ImageModule(opts);
+      const doc = new Docxtemplater().attachModule(imageModule).loadZip(zip).setData({ image: 'qr.png' }).render();
+
+      mergedData = doc.getZip().generate({ type: 'nodebuffer' });
     }
     fs.writeFileSync('modified/filled.docx', hide_qr ? docData : mergedData);
 
@@ -813,9 +809,14 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
         logoimage = logoFile.path;
       }
 
-      const qrdata = await getQRData(guid, logoimage);
+      await generateQRData(guid, logoimage);
 
-      mergedData = await mergeDocx(Buffer.from(qrdata), docData);
+      const headerAddedData = await getHeaderTextAddedDoc(docData);
+      const zip = new PizZip(headerAddedData);
+      const imageModule = new ImageModule(opts);
+      const doc = new Docxtemplater().attachModule(imageModule).loadZip(zip).setData({ image: 'qr.png' }).render();
+
+      mergedData = doc.getZip().generate({ type: 'nodebuffer' });
     }
     fs.writeFileSync('modified/filled.docx', hide_qr ? docData : mergedData);
 
