@@ -51,14 +51,14 @@ const filereader = require('../filereader');
 const { fillForm } = require('../pdf-form-fill');
 
 const BLOCKCHAIN_API_URL =
-  process.env.APP_ENV === 'production' ? 'https://integraledger.azure-api.net/api/v1.5' : 'https://integraledger.azure-api.net/api/v1.4';
+  process.env.APP_ENV === 'production' ? 'https://integraledger.azure-api.net/api/v1.5' : 'https://productionapis.azure-api.net';
 
-const getValue = async data => {
+const getValue = async (data, subscriptionKey) => {
   const response = await fetch(`${BLOCKCHAIN_API_URL}/valueexists/${data}`, {
     method: 'get',
     headers: {
       'Content-Type': 'application/json',
-      'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+      'Ocp-Apim-Subscription-Key': subscriptionKey,
     },
   });
   const result = await response.json();
@@ -73,7 +73,7 @@ const encryptStringWithRsaPrivateKey = (toEncrypt, privateKey) => {
   return signature.toString('base64');
 };
 
-const registerIdentity = async (fileName, guid, opt1 = '') => {
+const registerIdentity = async (fileName, guid, subscriptionKey, opt1 = '') => {
   // SHA-256 hash file
   const fileData = await readFileAsync(`modified/${fileName}`);
   const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
@@ -90,7 +90,7 @@ const registerIdentity = async (fileName, guid, opt1 = '') => {
     }),
     headers: {
       'Content-Type': 'application/json',
-      'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+      'Ocp-Apim-Subscription-Key': subscriptionKey,
     },
   });
   return encryptedData;
@@ -254,9 +254,10 @@ const generateQRData = async (guid, logoPath) => {
 
 exports.analyze = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
-    const responseJson = await getValue(encryptedData);
+    const responseJson = await getValue(encryptedData, subscription_key);
     let result = {};
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
@@ -277,9 +278,10 @@ exports.analyze = async (req, res) => {
 
 exports.analyzeDocx = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
-    const responseJson = await getValue(encryptedData);
+    const responseJson = await getValue(encryptedData, subscription_key);
     let result = {};
     if (responseJson.exists) {
       // Unzip docx file
@@ -389,6 +391,7 @@ exports.analyzeDocxNohash = async (req, res) => {
 exports.pdf = async (req, res) => {
   try {
     const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr } = req.body;
+    const subscription_key = req.headers['x-subscription-key'];
     const meta = JSON.parse(meta_form);
     const { pass_phrase } = meta;
     delete meta.pass_phrase;
@@ -436,6 +439,7 @@ exports.pdf = async (req, res) => {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
+          'Ocp-Apim-Subscription-Key': subscription_key,
         },
       });
       // const json = await registerKeyRes.json()
@@ -454,6 +458,7 @@ exports.pdf = async (req, res) => {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
+          'Ocp-Apim-Subscription-Key': subscription_key,
         },
       });
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
@@ -506,7 +511,7 @@ exports.pdf = async (req, res) => {
       : `${readingFileName}_Cartridge.pdf`;
     await renameFileAsync(`modified/${req.file ? req.file.filename : `${readingFileName}.pdf`}`, `modified/${fileName}`);
 
-    const encryptedData = await registerIdentity(fileName, guid, cartridgeType && cartridgeType === 'Vendor' ? guid : '');
+    const encryptedData = await registerIdentity(fileName, guid, subscription_key, cartridgeType && cartridgeType === 'Vendor' ? guid : '');
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
@@ -533,12 +538,14 @@ exports.pdf = async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
   } catch (err) {
+    console.log(err);
     res.status(err.statusCode || 500).send(err);
   }
 };
 
 exports.doc = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -608,7 +615,7 @@ exports.doc = async (req, res) => {
     const fileName = `${req.file.originalname.substring(0, req.file.originalname.length - 4)}_SmartDoc.pdf`;
     await renameFileAsync(`modified/${req.file.filename}`, `modified/${fileName}`);
 
-    const encryptedData = await registerIdentity(fileName, guid);
+    const encryptedData = await registerIdentity(fileName, guid, subscription_key);
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
@@ -627,6 +634,7 @@ exports.doc = async (req, res) => {
 
 exports.docxSmartdoc = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, logo_url, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -771,7 +779,7 @@ exports.docxSmartdoc = async (req, res) => {
       fs.unlinkSync(req.files.logo[0].path);
     }
 
-    const encryptedData = await registerIdentity(fileName, guid);
+    const encryptedData = await registerIdentity(fileName, guid, subscription_key);
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
@@ -789,6 +797,7 @@ exports.docxSmartdoc = async (req, res) => {
 
 exports.docxSmartDocAutoOpen = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, logo_url, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -988,7 +997,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
       fs.unlinkSync(req.files.logo[0].path);
     }
 
-    const encryptedData = await registerIdentity(fileName, guid);
+    const encryptedData = await registerIdentity(fileName, guid, subscription_key);
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
@@ -1017,6 +1026,7 @@ exports.deleteDocassemble = async (req, res) => {
 
 exports.docassemble = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const { meta_form, file } = req.body;
     const meta = JSON.parse(meta_form);
 
@@ -1076,7 +1086,7 @@ exports.docassemble = async (req, res) => {
     const fileName = `${originName.substring(0, originName.length - 4)}_SmartDoc.pdf`;
     await renameFileAsync('modified/docassemble_modified.pdf', `modified/${fileName}`);
 
-    const encryptedData = await registerIdentity(fileName, guid);
+    const encryptedData = await registerIdentity(fileName, guid, subscription_key);
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
@@ -1099,11 +1109,12 @@ exports.docassemble = async (req, res) => {
 
 exports.qrVerify = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+        'Ocp-Apim-Subscription-Key': subscription_key,
       },
     });
     const result = await response.json();
@@ -1124,11 +1135,12 @@ exports.qrVerify = async (req, res) => {
 
 exports.publicKey = async (req, res) => {
   try {
+    const subscription_key = req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/keyforowner/${req.params.id}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': process.env.SUBSCRIPTION_KEY,
+        'Ocp-Apim-Subscription-Key': subscription_key,
       },
     });
     const responseJson = await response.json();

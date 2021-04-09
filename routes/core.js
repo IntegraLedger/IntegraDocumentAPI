@@ -24,6 +24,12 @@ const upload = multer({
  *      summary: Accept PDF, verify it and return meta data if authentic
  *      description: Accept PDF, verify it and return meta data if authentic
  *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -56,6 +62,12 @@ router.post('/analyze', upload.single('file'), core.analyze);
  *      summary: Accept Docx file, verify it and return meta data if authenticated
  *      description: Accept Docx file, verify it and return meta data if authenticated
  *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -121,6 +133,11 @@ router.post('/analyzeDocxNohash', upload.single('file'), core.analyzeDocxNohash)
  *          schema:
  *            type: string
  *          description: used for hedgefund to create private and public personal cartridge documents.
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *      responses:
  *        "200":
  *          description: return signed pdf file
@@ -134,6 +151,12 @@ router.post('/pdf', upload.single('file'), core.pdf);
  *    post:
  *      description: Create signed docx format smart document with adding metadata, filling form fields of pdf file and adding QR code
  *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -171,6 +194,12 @@ router.post('/doc', upload.single('file'), core.doc);
  *    post:
  *      description: Create signed docx format smart document with adding metadata, filling form fields of docx file and adding QR code
  *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -223,6 +252,12 @@ router.post(
  *    post:
  *      description: Create signed docx format smart document which opens addin panel automatically with adding metadata, filling form fields of docx file and adding QR code
  *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -279,6 +314,11 @@ router.post('/docassemble', core.docassemble);
  *      description: Check if document(pdf & docx) is already registered by two APIs /pdf and /doc
  *      tags: [Smart Doc]
  *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *        - in: path
  *          name: guid
  *          schema:
@@ -299,6 +339,11 @@ router.get('/QRVerify/:guid', core.qrVerify);
  *      description: Get public key of the smart document
  *      tags: [Smart Doc]
  *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *          required: true
  *        - in: path
  *          name: id
  *          schema:
