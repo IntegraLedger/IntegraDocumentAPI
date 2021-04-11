@@ -77,7 +77,7 @@ const registerIdentity = async (fileName, guid, subscriptionKey, opt1 = '') => {
   // SHA-256 hash file
   const fileData = await readFileAsync(`modified/${fileName}`);
   const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
-  await fetch(`${BLOCKCHAIN_API_URL}/registerIdentity`, {
+  const response = await fetch(`${BLOCKCHAIN_API_URL}/registerIdentity`, {
     method: 'post',
     body: JSON.stringify({
       identityType: 'com.integraledger.lmatid',
@@ -93,6 +93,10 @@ const registerIdentity = async (fileName, guid, subscriptionKey, opt1 = '') => {
       'Ocp-Apim-Subscription-Key': subscriptionKey,
     },
   });
+  const result = await response.json();
+  if (result.statusCode === 401) {
+    throw {statusCode: 401, message: result.message};
+  }
   return encryptedData;
 };
 
@@ -258,6 +262,9 @@ exports.analyze = async (req, res) => {
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
     const responseJson = await getValue(encryptedData, subscription_key);
+    if (responseJson.statusCode === 401) {
+      return res.status(401).send({message: responseJson.message});
+    }
     let result = {};
     if (responseJson.exists) {
       const pdfDoc = new HummusRecipe(req.file.path);
@@ -282,6 +289,9 @@ exports.analyzeDocx = async (req, res) => {
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
     const responseJson = await getValue(encryptedData, subscription_key);
+    if (responseJson.statusCode === 401) {
+      return res.status(401).send({message: responseJson.message});
+    }
     let result = {};
     if (responseJson.exists) {
       // Unzip docx file
@@ -435,14 +445,17 @@ exports.pdf = async (req, res) => {
       const pubkeyString = publicKey.export({ type: 'pkcs1', format: 'pem' });
       const privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
 
-      await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
           'Ocp-Apim-Subscription-Key': subscription_key,
         },
       });
-      // const json = await registerKeyRes.json()
+      const result = await response.json();
+      if (result.statusCode === 401) {
+        throw {statusCode: 401, message: result.message};
+      }
       const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey);
       infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted);
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
@@ -454,13 +467,17 @@ exports.pdf = async (req, res) => {
       const pubkeyString = publicKey.export({ type: 'pkcs1', format: 'pem' });
       const privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
 
-      await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
           'Ocp-Apim-Subscription-Key': subscription_key,
         },
       });
+      const result = await response.json();
+      if (result.statusCode === 401) {
+        throw {statusCode: 401, message: result.message};
+      }
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
     }
     // Fill form fields
@@ -1118,6 +1135,9 @@ exports.qrVerify = async (req, res) => {
       },
     });
     const result = await response.json();
+    if (result.statusCode === 401) {
+      throw {statusCode: 401, message: result.message};
+    }
     if (result.exists) {
       res.render('success', {
         identityId: result.data[result.data.length - 1].Record.identityId,
@@ -1144,6 +1164,9 @@ exports.publicKey = async (req, res) => {
       },
     });
     const responseJson = await response.json();
+    if (responseJson.statusCode === 401) {
+      throw {statusCode: 401, message: responseJson.message};
+    }
     if (responseJson.exists) {
       res.status(200).json({
         exists: true,
