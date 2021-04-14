@@ -6,6 +6,7 @@ describe('POST /analyze', () => {
   test('Should return metadata if authenticated', done => {
     request(app)
       .post('/analyze')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .attach('file', `test_files/${filename}`)
       .expect(200)
       .end((err, res) => {
@@ -19,6 +20,7 @@ describe('POST /analyze', () => {
   test('Should return false if not authenticated', done => {
     request(app)
       .post('/analyze')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .attach('file', 'test_files/sample.pdf')
       .expect(200)
       .end((err, res) => {
@@ -36,6 +38,7 @@ describe('POST /analyzeDocx', () => {
   test('Should return metadata if authenticated', done => {
     request(app)
       .post('/analyzeDocx')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .attach('file', `test_files/${filename}`)
       .expect(200)
       .end((err, res) => {
@@ -49,6 +52,7 @@ describe('POST /analyzeDocx', () => {
   test('Should return false if not authenticated', done => {
     request(app)
       .post('/analyzeDocx')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .attach('file', 'test_files/sample.docx')
       .expect(200)
       .end((err, res) => {
@@ -68,6 +72,7 @@ describe('POST /pdf', () => {
   test('Should return signed pdf-format smart document', done => {
     request(app)
       .post('/pdf')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .field('meta_form', meta_form)
       .field('data_form', data_form)
       .attach('file', 'test_files/sample.pdf')
@@ -91,6 +96,7 @@ describe('POST /doc', () => {
   test('Should return signed pdf-format smart document', done => {
     request(app)
       .post('/doc')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .field('meta_form', meta_form)
       .field('data_form', data_form)
       .attach('file', 'test_files/sample.docx')
@@ -114,6 +120,7 @@ describe('POST /docxSmartdoc', () => {
   test('Should return signed docx-format smart document', done => {
     request(app)
       .post('/docxSmartdoc')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .field('meta_form', meta_form)
       .field('data_form', data_form)
       .attach('file', 'test_files/sample.docx')
@@ -136,6 +143,7 @@ describe('POST /docxSmartDocAutoOpen', () => {
   test('Should return signed docx-format smart document', done => {
     request(app)
       .post('/docxSmartDocAutoOpen')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .field('meta_form', meta_form)
       .field('data_form', data_form)
       .attach('file', 'test_files/sample.docx')
@@ -152,11 +160,12 @@ describe('POST /docxSmartDocAutoOpen', () => {
 });
 
 describe('GET /QRVerify/:guid', () => {
-  const guid = process.env.APP_ENV === 'development' ? 'af702180-58ad-11eb-8d19-4111daa82f84' : '9ef367e0-5b2d-11eb-8a77-790a5e8c3d4f';
+  const guid = process.env.APP_ENV === 'development' ? '264d08d0-9cf7-11eb-bed6-97fda5311a11' : '7cbe5b70-9cf6-11eb-ad94-73a0e2128331';
 
   test('Should return success ejs if authenticated', done => {
     request(app)
       .get(`/QRVerify/${guid}`)
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .expect(200)
       .end((err, res) => {
         if (err) {
@@ -170,6 +179,7 @@ describe('GET /QRVerify/:guid', () => {
   test('Should return failure ejs if not authenticated', done => {
     request(app)
       .get('/QRVerify/aaaaaaaa-test-test-test-aaaaaaaaaaaa')
+      .set('x-subscription-key', process.env.SUBSCRIPTION_KEY)
       .expect(200)
       .end((err, res) => {
         if (err) {
