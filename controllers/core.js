@@ -652,7 +652,7 @@ exports.doc = async (req, res) => {
 exports.docxSmartdoc = async (req, res) => {
   try {
     const subscription_key = req.headers['x-subscription-key'];
-    const { master_id, meta_form, data_form, logo_url, hide_qr } = req.body;
+    const { master_id, meta_form, data_form, logo, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
 
@@ -663,8 +663,8 @@ exports.docxSmartdoc = async (req, res) => {
     let mergedData;
     if (!hide_qr) {
       let logoimage = 'integra-qr.png';
-      if (logo_url) {
-        await doRequest(logo_url, 'qr-logo.png');
+      if (logo) {
+        await doRequest(logo, 'qr-logo.png');
         logoimage = 'qr-logo.png';
       }
       if (req.files.logo) {
@@ -815,7 +815,7 @@ exports.docxSmartdoc = async (req, res) => {
 exports.docxSmartDocAutoOpen = async (req, res) => {
   try {
     const subscription_key = req.headers['x-subscription-key'];
-    const { master_id, meta_form, data_form, logo_url, hide_qr } = req.body;
+    const { master_id, meta_form, data_form, logo, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
 
@@ -826,8 +826,8 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
     let mergedData;
     if (!hide_qr) {
       let logoimage = 'integra-qr.png';
-      if (logo_url) {
-        await doRequest(logo_url, 'qr-logo.png');
+      if (logo) {
+        await doRequest(logo, 'qr-logo.png');
         logoimage = 'qr-logo.png';
       }
       if (req.files.logo) {
@@ -1202,10 +1202,10 @@ exports.verifyKey = async (req, res) => {
 
 exports.encryptWithPublicKey = async (req, res) => {
   try {
-    const { publicKey } = req.body;
+    const { public_key } = req.body;
     const toEncrypt = fs.readFileSync(req.file.path, 'binary');
     const buffer = Buffer.from(toEncrypt);
-    const key = createPublicKeyObject(publicKey);
+    const key = createPublicKeyObject(public_key);
     const enc = encrypt(buffer);
     const AESEncryptedDoc = enc.encryptedData;
     const RSAEncryptedKey = crypto.publicEncrypt(key, enc.key);
@@ -1228,9 +1228,9 @@ exports.encryptWithPublicKey = async (req, res) => {
 
 exports.decryptWithPrivateKey = async (req, res) => {
   try {
-    const { data, privateKey } = req.body;
+    const { data, private_key } = req.body;
     const { AESEncryptedDoc, RSAEncryptedIV, RSAEncryptedKey, filename } = data;
-    const key = createPrivateKeyObject(privateKey);
+    const key = createPrivateKeyObject(private_key);
 
     const aes_iv = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedIV, 'base64'));
     const aes_key = crypto.privateDecrypt(key, Buffer.from(RSAEncryptedKey, 'base64'));

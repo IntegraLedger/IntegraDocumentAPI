@@ -112,18 +112,18 @@ router.post('/analyzeDocxNohash', upload.single('file'), core.analyzeDocxNohash)
  *                  description: master ID of the smart document
  *                cartridge_type:
  *                  type: string
- *                  description: required when you want cartridge smart document. It can be `Organization`, `Personal`, `Encrypt` and so on.
+ *                  description: Required for cartridge smart document. Available cartridge types are `Organization`, `Personal`, `Encrypt`, `Purchaser`, `Vendor`, `VendorContract`, `PurchaseOrder`, `Invoice`.
  *                meta_form:
  *                  type: string
  *                  required: true
- *                  description: metadata for the smart document.
+ *                  description: metadata for the smart document. Should be JSON parsable string.
  *                data_form:
  *                  type: string
  *                  required: true
  *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
  *                file:
  *                  type: file
- *                  description: File to put metadata. not necessary for the cartridge creation.
+ *                  description: PDF file to put metadata. not necessary for the cartridge creation.
  *                hide_qr:
  *                  type: boolean
  *                  description: hide qr code if this field is set true (optional)
@@ -149,7 +149,7 @@ router.post('/pdf', upload.single('file'), core.pdf);
  * path:
  *  /doc/:
  *    post:
- *      description: Create signed docx format smart document with adding metadata, filling form fields of pdf file and adding QR code
+ *      description: Create signed pdf format smart document with adding metadata, filling form fields and adding QR code
  *      tags: [Smart Doc]
  *      parameters:
  *        - in: header
@@ -170,14 +170,14 @@ router.post('/pdf', upload.single('file'), core.pdf);
  *                meta_form:
  *                  type: string
  *                  required: true
- *                  description: metadata for the smart document.
+ *                  description: metadata for the smart document. Should be JSON parsable string.
  *                data_form:
  *                  type: string
  *                  required: true
  *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
  *                file:
  *                  type: file
- *                  description: File to put metadata.
+ *                  description: Docx file to put metadata.
  *                hide_qr:
  *                  type: boolean
  *                  description: hide qr code if this field is set true (optional)
@@ -213,22 +213,17 @@ router.post('/doc', upload.single('file'), core.doc);
  *                meta_form:
  *                  type: string
  *                  required: true
- *                  description: metadata for the smart document.
+ *                  description: metadata for the smart document. Should be JSON parsable string.
  *                data_form:
  *                  type: string
  *                  required: true
  *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
- *                logo_url:
- *                  type: string
- *                  required: false
- *                  description: url of the logo image for qr code section.
  *                logo:
  *                  type: file
- *                  required: false
- *                  description: File of the logo image for qr code section.
+ *                  description: Either file object or url of the logo image for qr code section. (Both file and string are supported)
  *                file:
  *                  type: file
- *                  description: File to put metadata.
+ *                  description: Docx file to put metadata.
  *                hide_qr:
  *                  type: boolean
  *                  description: hide qr code if this field is set true (optional)
@@ -271,22 +266,17 @@ router.post(
  *                meta_form:
  *                  type: string
  *                  required: true
- *                  description: metadata for the smart document.
+ *                  description: metadata for the smart document. Should be JSON parsable string.
  *                data_form:
  *                  type: string
  *                  required: true
  *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
- *                logo_url:
- *                  type: string
- *                  required: false
- *                  description: url of the logo image for qr code section.
  *                logo:
  *                  type: file
- *                  required: false
- *                  description: File of the logo image for qr code section.
+ *                  description: Either file object or url of the logo image for qr code section. (Both file and string are supported)
  *                file:
  *                  type: file
- *                  description: File to put metadata.
+ *                  description: Docx file to put metadata.
  *                hide_qr:
  *                  type: boolean
  *                  description: hide qr code if this field is set true (optional)
@@ -417,7 +407,7 @@ router.post('/verifyKey/:key', core.verifyKey);
  *                file:
  *                  type: file
  *                  description: File to encrypt.
- *                publicKey:
+ *                public_key:
  *                  type: string
  *                  description: public key.
  *      responses:
@@ -456,7 +446,7 @@ router.post('/encryptWithPublicKey', upload.single('file'), core.encryptWithPubl
  *                data:
  *                  type: string
  *                  description: encrypted data
- *                privateKey:
+ *                private_key:
  *                  type: string
  *                  description: private key.
  *      responses:
