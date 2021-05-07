@@ -29,7 +29,6 @@ const upload = multer({
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -67,7 +66,6 @@ router.post('/analyze', upload.single('file'), core.analyze);
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -137,7 +135,6 @@ router.post('/analyzeDocxNohash', upload.single('file'), core.analyzeDocxNohash)
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *      responses:
  *        "200":
  *          description: return signed pdf file
@@ -156,7 +153,6 @@ router.post('/pdf', upload.single('file'), core.pdf);
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -199,7 +195,6 @@ router.post('/doc', upload.single('file'), core.doc);
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -252,7 +247,6 @@ router.post(
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *      requestBody:
  *        required: true
  *        content:
@@ -308,7 +302,6 @@ router.post('/docassemble', core.docassemble);
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *        - in: path
  *          name: guid
  *          schema:
@@ -333,7 +326,6 @@ router.get('/QRVerify/:guid', core.qrVerify);
  *          name: x-subscription-key
  *          schema:
  *            type: string
- *          required: true
  *        - in: path
  *          name: id
  *          schema:

@@ -50,8 +50,9 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2020-03-02; 
 const filereader = require('../filereader');
 const { fillForm } = require('../pdf-form-fill');
 
-const BLOCKCHAIN_API_URL =
-  process.env.APP_ENV === 'production' ? 'https://integraledger.azure-api.net/api/v1.5' : 'https://productionapis.azure-api.net';
+const isProd = process.env.APP_ENV === 'production';
+
+const BLOCKCHAIN_API_URL = isProd ? 'https://integraledger.azure-api.net/api/v1.5' : 'https://productionapis.azure-api.net';
 
 const getValue = async (data, subscriptionKey) => {
   const response = await fetch(`${BLOCKCHAIN_API_URL}/valueexists/${data}`, {
@@ -258,7 +259,7 @@ const generateQRData = async (guid, logoPath) => {
 
 exports.analyze = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
     const responseJson = await getValue(encryptedData, subscription_key);
@@ -285,7 +286,7 @@ exports.analyze = async (req, res) => {
 
 exports.analyzeDocx = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
     const responseJson = await getValue(encryptedData, subscription_key);
@@ -401,7 +402,7 @@ exports.analyzeDocxNohash = async (req, res) => {
 exports.pdf = async (req, res) => {
   try {
     const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr } = req.body;
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const meta = JSON.parse(meta_form);
     const { pass_phrase } = meta;
     delete meta.pass_phrase;
@@ -562,7 +563,7 @@ exports.pdf = async (req, res) => {
 
 exports.doc = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -651,7 +652,7 @@ exports.doc = async (req, res) => {
 
 exports.docxSmartdoc = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, logo, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -814,7 +815,7 @@ exports.docxSmartdoc = async (req, res) => {
 
 exports.docxSmartDocAutoOpen = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, logo, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -1043,7 +1044,7 @@ exports.deleteDocassemble = async (req, res) => {
 
 exports.docassemble = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { meta_form, file } = req.body;
     const meta = JSON.parse(meta_form);
 
@@ -1126,7 +1127,7 @@ exports.docassemble = async (req, res) => {
 
 exports.qrVerify = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
       method: 'get',
       headers: {
@@ -1155,7 +1156,7 @@ exports.qrVerify = async (req, res) => {
 
 exports.publicKey = async (req, res) => {
   try {
-    const subscription_key = req.headers['x-subscription-key'];
+    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/keyforowner/${req.params.id}`, {
       method: 'get',
       headers: {
