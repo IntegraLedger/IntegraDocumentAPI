@@ -1,3 +1,5 @@
+/* eslint-disable newline-per-chained-call */
+/* eslint-disable no-throw-literal */
 const QRCode = require('qrcode');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
@@ -23,6 +25,7 @@ const Docxtemplater = require('docxtemplater');
 const JSZip = require('jszip');
 const { createCanvas, loadImage } = require('canvas');
 const ImageModule = require('docxtemplater-image-module-free');
+
 const opts = {};
 opts.centered = false;
 opts.fileType = 'docx';
@@ -231,6 +234,7 @@ const getHeaderTextAddedDoc = async docData => {
   let originDocumentXml = await originDocumentFile.async('string');
   const startIndex = originDocumentXml.indexOf('<w:body>') + 8;
   originDocumentXml =
+    // eslint-disable-next-line prefer-template
     originDocumentXml.slice(0, startIndex) +
     '<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t xml:space="preserve">{%image}</w:t></w:r></w:p>' +
     originDocumentXml.slice(startIndex);
@@ -386,7 +390,7 @@ exports.analyzeDocxNohash = async (req, res) => {
     }
 
     fs.rmdirSync(`modified/${unzippedName}`, { recursive: true });
-    result = {
+    const result = {
       result: meta,
       // creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate,
     };
