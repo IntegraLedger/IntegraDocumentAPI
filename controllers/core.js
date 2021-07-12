@@ -96,7 +96,7 @@ const registerIdentity = async (fileName, guid, subscriptionKey, opt1 = '') => {
   });
   const result = await response.json();
   if (result.statusCode === 401) {
-    throw {statusCode: 401, message: result.message};
+    throw { statusCode: 401, message: result.message };
   }
   return encryptedData;
 };
@@ -259,12 +259,12 @@ const generateQRData = async (guid, logoPath) => {
 
 exports.analyze = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
     const responseJson = await getValue(encryptedData, subscription_key);
     if (responseJson.statusCode === 401) {
-      return res.status(401).send({message: responseJson.message});
+      return res.status(401).send({ message: responseJson.message });
     }
     let result = {};
     if (responseJson.exists) {
@@ -286,12 +286,12 @@ exports.analyze = async (req, res) => {
 
 exports.analyzeDocx = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const fileData = await readFileAsync(req.file.path);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
     const responseJson = await getValue(encryptedData, subscription_key);
     if (responseJson.statusCode === 401) {
-      return res.status(401).send({message: responseJson.message});
+      return res.status(401).send({ message: responseJson.message });
     }
     let result = {};
     if (responseJson.exists) {
@@ -402,7 +402,7 @@ exports.analyzeDocxNohash = async (req, res) => {
 exports.pdf = async (req, res) => {
   try {
     const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr } = req.body;
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const meta = JSON.parse(meta_form);
     const { pass_phrase } = meta;
     delete meta.pass_phrase;
@@ -455,7 +455,7 @@ exports.pdf = async (req, res) => {
       });
       const result = await response.json();
       if (result.statusCode === 401) {
-        throw {statusCode: 401, message: result.message};
+        throw { statusCode: 401, message: result.message };
       }
       const encrypted = encryptStringWithRsaPrivateKey(pass_phrase, privateKey);
       infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted);
@@ -477,7 +477,7 @@ exports.pdf = async (req, res) => {
       });
       const result = await response.json();
       if (result.statusCode === 401) {
-        throw {statusCode: 401, message: result.message};
+        throw { statusCode: 401, message: result.message };
       }
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
     }
@@ -563,7 +563,7 @@ exports.pdf = async (req, res) => {
 
 exports.doc = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -652,7 +652,7 @@ exports.doc = async (req, res) => {
 
 exports.docxSmartdoc = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, logo, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -815,7 +815,7 @@ exports.docxSmartdoc = async (req, res) => {
 
 exports.docxSmartDocAutoOpen = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { master_id, meta_form, data_form, logo, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -1044,7 +1044,7 @@ exports.deleteDocassemble = async (req, res) => {
 
 exports.docassemble = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const { meta_form, file } = req.body;
     const meta = JSON.parse(meta_form);
 
@@ -1127,7 +1127,7 @@ exports.docassemble = async (req, res) => {
 
 exports.qrVerify = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
       method: 'get',
       headers: {
@@ -1137,7 +1137,7 @@ exports.qrVerify = async (req, res) => {
     });
     const result = await response.json();
     if (result.statusCode === 401) {
-      throw {statusCode: 401, message: result.message};
+      throw { statusCode: 401, message: result.message };
     }
     if (result.exists) {
       res.render('success', {
@@ -1156,7 +1156,7 @@ exports.qrVerify = async (req, res) => {
 
 exports.publicKey = async (req, res) => {
   try {
-    const subscription_key = isProd? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/keyforowner/${req.params.id}`, {
       method: 'get',
       headers: {
@@ -1166,7 +1166,7 @@ exports.publicKey = async (req, res) => {
     });
     const responseJson = await response.json();
     if (responseJson.statusCode === 401) {
-      throw {statusCode: 401, message: responseJson.message};
+      throw { statusCode: 401, message: responseJson.message };
     }
     if (responseJson.exists) {
       res.status(200).json({
