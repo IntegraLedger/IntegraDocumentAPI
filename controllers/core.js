@@ -817,6 +817,144 @@ exports.docxSmartdoc = async (req, res) => {
   }
 };
 
+exports.xlsSmartdoc = async (req, res) => {
+  try {
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const { master_id, meta_form, data_form } = req.body;
+
+    const meta = JSON.parse(meta_form);
+
+    const guid = uuidv1();
+
+    // Unzip xlsx file
+    const directory = await unzipper.Open.file(req.files.file[0].path);
+    const unzippedName = uuidv1();
+    await directory.extract({ path: `modified/${unzippedName}` });
+
+    /**
+     * Create new item.mxl
+     */
+    if (!fs.existsSync(`modified/${unzippedName}/customXml`)) {
+      fs.mkdirSync(`modified/${unzippedName}/customXml`);
+    }
+
+    const files = fs.readdirSync(`modified/${unzippedName}/customXml`);
+    const itemFiles = files.filter(item => /^item\d+\.xml$/i.test(item));
+
+    const obj = {
+      '@': { xmlns: 'http://schemas.business-integrity.com/dealbuilder/2006/answers' },
+      Variable: [],
+    };
+    Object.keys(meta).forEach(key => {
+      obj.Variable.push({
+        '@': { Name: key },
+        Value: meta[key],
+      });
+    });
+    obj.Variable.push({
+      '@': { Name: 'infoJSON' },
+      Value: JSON.stringify(meta),
+    });
+    obj.Variable.push({
+      '@': { Name: 'formJSON' },
+      Value: data_form,
+    });
+    obj.Variable.push({
+      '@': { Name: 'id' },
+      Value: guid,
+    });
+    if (master_id) {
+      obj.Variable.push({
+        '@': { Name: 'master_id' },
+        Value: master_id,
+      });
+    }
+
+    const xml = js2xmlparser.parse('Session', obj);
+    fs.writeFileSync(`modified/${unzippedName}/customXml/item${itemFiles.length + 1}.xml`, xml);
+
+    /**
+     * Create docProps/custom.xml
+     */
+    const isCustomXMLExist = fs.existsSync(`modified/${unzippedName}/docProps/custom.xml`);
+    const customObj = {
+      '@': {
+        xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
+        'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+      },
+      property: [],
+    };
+    Object.keys(meta).forEach((key, index) => {
+      customObj.property.push({
+        '@': {
+          xmlns: 'http://schemas.openxmlformats.org/officeDocument/2006/custom-properties',
+          fmtid: '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}',
+          pid: `${index + 2}`,
+          name: key,
+        },
+        'vt:lpwstr': {
+          '@': {
+            'xmlns:vt': 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+          },
+          '#': meta[key],
+        },
+      });
+    });
+    const customXml = js2xmlparser.parse('Properties', customObj);
+    fs.writeFileSync(`modified/${unzippedName}/docProps/custom.xml`, customXml);
+    if (!isCustomXMLExist) {
+      // Update [Content_Types].xml
+      const a = fs.readFileSync(`modified/${unzippedName}/[Content_Types].xml`).toString();
+      const json = parser.toJson(a, { object: true, reversible: true });
+      json.Types.Override.push({
+        PartName: '/docProps/custom.xml',
+        ContentType: 'application/vnd.openxmlformats-officedocument.custom-properties+xml',
+      });
+      fs.writeFileSync(`modified/${unzippedName}/[Content_Types].xml`, `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(json)}`);
+
+      const rels = fs.readFileSync(`modified/${unzippedName}/_rels/.rels`).toString();
+      const relsJson = parser.toJson(rels, { object: true, reversible: true });
+      relsJson.Relationships.Relationship.push({
+        Type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties',
+        Target: '/docProps/custom.xml',
+        Id: `rId${relsJson.Relationships.Relationship.length + 1}`,
+      });
+      fs.writeFileSync(`modified/${unzippedName}/_rels/.rels`, `<?xml version="1.0" encoding="utf-8"?>${parser.toXml(relsJson)}`);
+    }
+
+    /**
+     * Zip
+     */
+    const fileName = `${req.files.file[0].originalname.substring(0, req.files.file[0].originalname.length - 5)}_SmartDoc.xlsx`;
+    const buffer = await zipdir(`modified/${unzippedName}`);
+    fs.writeFileSync(`modified/${fileName}`, buffer);
+
+    fs.rmdirSync(`modified/${unzippedName}`, { recursive: true });
+    // fs.unlinkSync('modified/filled.docx');
+    if (req.files.file) {
+      fs.unlinkSync(req.files.file[0].path);
+    }
+
+    if (req.files.logo) {
+      fs.unlinkSync(req.files.logo[0].path);
+    }
+
+    const encryptedData = await registerIdentity(fileName, guid, subscription_key);
+
+    // Attach file name to response header
+    res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
+    res.setHeader('file-name', fileName);
+    res.setHeader('id', guid);
+    res.setHeader('hash', encryptedData);
+
+    res.download(`modified/${fileName}`, fileName, () => {
+      fs.unlinkSync(`modified/${fileName}`);
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
 exports.docxSmartDocAutoOpen = async (req, res) => {
   try {
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];

@@ -238,6 +238,52 @@ router.post(
 /**
  * @swagger
  * path:
+ *  /xlsSmartDoc/:
+ *    post:
+ *      description: Create signed xlsx format smart document with adding metadata, filling form fields of docx file and adding QR code
+ *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                master_id:
+ *                  type: string
+ *                  description: master ID of the smart document
+ *                meta_form:
+ *                  type: string
+ *                  required: true
+ *                  description: metadata for the smart document. Should be JSON parsable string.
+ *                data_form:
+ *                  type: string
+ *                  required: true
+ *                  description: array of components such as textfield, textarea, checkbox, radio and so on. stored a stringified json object array as a `formJSON` meta field.
+ *                file:
+ *                  type: file
+ *                  description: Xlsx file to put metadata.
+ *      responses:
+ *        "200":
+ *          description: return signed xlsx file
+ */
+router.post(
+  '/xlsSmartDoc',
+  upload.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'logo', maxCount: 1 },
+  ]),
+  core.xlsSmartdoc
+);
+
+/**
+ * @swagger
+ * path:
  *  /docxSmartDocAutoOpen/:
  *    post:
  *      description: Create signed docx format smart document which opens addin panel automatically with adding metadata, filling form fields of docx file and adding QR code
