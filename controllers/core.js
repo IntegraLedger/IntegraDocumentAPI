@@ -52,6 +52,7 @@ const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2020-03-02; identity_beta=v3' });
 const filereader = require('../filereader');
 const { fillForm } = require('../pdf-form-fill');
+const PDFDigitalForm = require('../pdf-digital-form');
 
 const isProd = process.env.APP_ENV === 'production';
 
@@ -1566,4 +1567,23 @@ exports.uploadToAzure = async (req, res) => {
 
 exports.root = (req, res) => {
   res.send(`Integra API (Blockchain API: ${BLOCKCHAIN_API_URL})`);
+};
+
+exports.getFormField = async (req, res) => {
+  try {
+    const pdfParser = hummus.createReader(req.file.path);
+    const digitalForm = new PDFDigitalForm(pdfParser);
+    if (digitalForm.hasForm()) {
+      // console.log(digitalForm.fields, digitalForm.createSimpleKeyValue());
+      res.send({
+        hasForm: true,
+        form: digitalForm.createSimpleKeyValue(),
+      });
+    } else {
+      res.send({ hasForm: false });
+    }
+    fs.unlinkSync(req.file.path);
+  } catch (err) {
+    res.status(err.statusCode || 500).send(err);
+  }
 };
