@@ -1587,3 +1587,21 @@ exports.getFormField = async (req, res) => {
     res.status(err.statusCode || 500).send(err);
   }
 };
+
+exports.convertToPdf = async (req, res) => {
+  try {
+    const content = fs.readFileSync(req.file.path, 'binary');
+    const zip = new PizZip(content);
+    const doc = new Docxtemplater().loadZip(zip).render();
+    const docData = doc.getZip().generate({ type: 'nodebuffer' });
+
+    const pdfData = await libreConvertAsync(docData, '.pdf', undefined);
+    fs.writeFileSync(req.file.path, pdfData);
+    res.download(req.file.path, req.file.originalname, () => {
+      fs.unlinkSync(req.file.path);
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(err.statusCode || 500).send(err);
+  }
+};
