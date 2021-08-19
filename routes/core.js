@@ -1,12 +1,35 @@
 const express = require('express');
 const multer = require('multer');
+const fs = require('fs');
+const uuidv1 = require('uuid/v1');
 const core = require('../controllers/core');
 
 const router = express.Router();
 
+const UPLOAD_BASE_DIR = 'uploads';
+const UPLOAD_LIMITS = { fieldSize: 25 * 1024 * 1024 };
+
 const upload = multer({
-  dest: 'uploads/',
-  limits: { fieldSize: 25 * 1024 * 1024 },
+  dest: UPLOAD_BASE_DIR,
+  limits: UPLOAD_LIMITS,
+});
+
+// multer storage and instance for /docxSmartDoc
+const smartDocxStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    req.guid = uuidv1();
+    const workDir = `${UPLOAD_BASE_DIR}/${req.guid}`;
+    req.workDir = workDir;
+
+    fs.mkdirSync(workDir);
+
+    cb(null, req.workDir);
+  }
+});
+
+const smartDocUpload = multer({
+  storage: smartDocxStorage,
+  limits: UPLOAD_LIMITS,
 });
 
 /**
@@ -228,7 +251,7 @@ router.post('/doc', upload.single('file'), core.doc);
  */
 router.post(
   '/docxSmartDoc',
-  upload.fields([
+  smartDocUpload.fields([
     { name: 'file', maxCount: 1 },
     { name: 'logo', maxCount: 1 },
   ]),
