@@ -9,7 +9,21 @@ const unzipper = require('unzipper');
 const zipdir = require('zip-dir');
 const parser = require('xml2json');
 const js2xmlparser = require('js2xmlparser');
+
+/*
+  Node main thread is blocking in sync functions.
+  In many cases better to use async versions.
+  fs (Node 10+) provide a set of async functions which return promises, so we can use await.
+
+  const fsp = require('fs').promises;
+  const content = await fsp.readFile(...);
+
+  or like this:
+  const { readFile, ... } = require('fs').promises;
+  const content = await readFile(...);
+*/
 const fs = require('fs');
+
 const http = require('http');
 const https = require('https');
 const azure = require('azure-storage');
@@ -811,7 +825,15 @@ exports.docxSmartdoc = async (req, res) => {
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
+
+    /*
+      this line generate exception if fileName contains non-latin chars.
+      res.download() correctly encode such filenames in
+      content-disposition header (by RFC 6266, RFC 8187).
+      It would be better to encode fileName to base64 if this header is required somewhere
+    */
     res.setHeader('file-name', fileName);
+
     res.setHeader('id', guid);
     res.setHeader('hash', encryptedData);
 
