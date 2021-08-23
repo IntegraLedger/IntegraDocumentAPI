@@ -17,14 +17,18 @@ const upload = multer({
 // multer storage and instance for /docxSmartDoc
 const smartDocxStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    req.guid = uuidv1();
-    const workDir = `${UPLOAD_BASE_DIR}/${req.guid}`;
-    req.workDir = workDir;
+    if (file.fieldname !== 'logo') {
+      req.guid = uuidv1();
+      const workDir = `${UPLOAD_BASE_DIR}/${req.guid}`;
+      req.workDir = workDir;
 
-    fs.mkdirSync(workDir);
+      fs.mkdirSync(workDir);
 
-    cb(null, req.workDir);
-  }
+      cb(null, req.workDir);
+    } else {
+      cb(null, UPLOAD_BASE_DIR);
+    }
+  },
 });
 
 const smartDocUpload = multer({
@@ -297,7 +301,7 @@ router.post(
  */
 router.post(
   '/xlsSmartDoc',
-  upload.fields([
+  smartDocUpload.fields([
     { name: 'file', maxCount: 1 },
     { name: 'logo', maxCount: 1 },
   ]),
@@ -349,7 +353,7 @@ router.post(
  */
 router.post(
   '/docxSmartDocAutoOpen',
-  upload.fields([
+  smartDocUpload.fields([
     { name: 'file', maxCount: 1 },
     { name: 'logo', maxCount: 1 },
   ]),
