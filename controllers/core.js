@@ -504,7 +504,7 @@ exports.pdf = async (req, res) => {
     meta.id = guid;
     fillForm(writer, meta);
 
-    if (!hide_qr) {
+    if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
       await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
       const pageBox = reader.parsePage(0).getMediaBox();
@@ -615,7 +615,7 @@ exports.doc = async (req, res) => {
     infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
 
-    if (!hide_qr) {
+    if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
       await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
       const pageBox = reader.parsePage(0).getMediaBox();
@@ -695,7 +695,7 @@ exports.docxSmartdoc = async (req, res) => {
     const relsFile = `${contentDir}/_rels/.rels`;
 
     let mergedData;
-    if (!hide_qr) {
+    if (!hide_qr || hide_qr === 'false') {
       let logoimage = 'integra-qr.png';
       if (logo) {
         await doRequest(logo, 'qs-logo.png');
@@ -1008,7 +1008,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
     const wordExtensionDir = `${contentDir}/word/webextensions`;
 
     let mergedData;
-    if (!hide_qr) {
+    if (!hide_qr || hide_qr === 'false') {
       let logoimage = 'integra-qr.png';
       if (logo) {
         await doRequest(logo, 'qr-logo.png');
