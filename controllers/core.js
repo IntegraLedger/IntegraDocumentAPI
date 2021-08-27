@@ -261,7 +261,7 @@ const getHeaderTextAddedDoc = async docData => {
 
 const generateQRData = async (guid, logoPath) => {
   const canvas = createCanvas(200, 200);
-  QRCode.toCanvas(canvas, `${process.env.API_URL}/QRVerify/${guid}`, {
+  QRCode.toCanvas(canvas, `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`, {
     errorCorrectionLevel: 'H',
     margin: 1,
     color: {
@@ -506,7 +506,7 @@ exports.pdf = async (req, res) => {
 
     if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
-      await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+      await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`);
       const pageBox = reader.parsePage(0).getMediaBox();
       const pageWidth = pageBox[2] - pageBox[0];
       const pageHeight = pageBox[3] - pageBox[1];
@@ -536,7 +536,13 @@ exports.pdf = async (req, res) => {
       });
       pageModifier.endContext().writePage();
       pageModifier
-        .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+        .attachURLLinktoCurrentPage(
+          `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`,
+          pageWidth - 100,
+          pageHeight,
+          pageWidth,
+          pageHeight - 100
+        )
         .endContext()
         .writePage();
     }
@@ -617,7 +623,7 @@ exports.doc = async (req, res) => {
 
     if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
-      await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+      await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`);
       const pageBox = reader.parsePage(0).getMediaBox();
       const pageWidth = pageBox[2] - pageBox[0];
       const pageHeight = pageBox[3] - pageBox[1];
@@ -647,7 +653,13 @@ exports.doc = async (req, res) => {
       });
       pageModifier.endContext().writePage();
       pageModifier
-        .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+        .attachURLLinktoCurrentPage(
+          `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`,
+          pageWidth - 100,
+          pageHeight,
+          pageWidth,
+          pageHeight - 100
+        )
         .endContext()
         .writePage();
     }
@@ -1247,7 +1259,7 @@ exports.docassemble = async (req, res) => {
     fillForm(writer, meta);
 
     // Add QR Code into first page
-    await QRCode.toFile('qr.png', `${process.env.API_URL}/QRVerify/${guid}`);
+    await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`);
     const pageBox = reader.parsePage(0).getMediaBox();
     const pageWidth = pageBox[2] - pageBox[0];
     const pageHeight = pageBox[3] - pageBox[1];
@@ -1270,7 +1282,13 @@ exports.docassemble = async (req, res) => {
     });
     pageModifier.endContext().writePage();
     pageModifier
-      .attachURLLinktoCurrentPage(`${process.env.API_URL}/QRVerify/${guid}`, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
+      .attachURLLinktoCurrentPage(
+        `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`,
+        pageWidth - 100,
+        pageHeight,
+        pageWidth,
+        pageHeight - 100
+      )
       .endContext()
       .writePage();
     writer.end();
