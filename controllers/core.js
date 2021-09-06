@@ -99,6 +99,7 @@ const registerIdentity = async (filePath, guid, subscriptionKey, opt1 = '') => {
   const response = await fetch(`${BLOCKCHAIN_API_URL}/registerIdentity`, {
     method: 'post',
     body: JSON.stringify({
+      integraId: uuidv1(),
       identityType: 'com.integraledger.lmatid',
       metaData: 'Integra Smart Document',
       value: encryptedData,
@@ -1336,7 +1337,7 @@ exports.qrVerify = async (req, res) => {
     }
     if (result.exists) {
       res.render('success', {
-        identityId: result.data[result.data.length - 1].Record.identityId,
+        identityId: result.data[result.data.length - 1].Record.integraId,
         value: result.data[result.data.length - 1].Record.value,
         metaData: result.data[result.data.length - 1].Record.metaData,
         creationDate: moment(result.data[result.data.length - 1].Record.creationDate).format('LLL'),
