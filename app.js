@@ -42,7 +42,7 @@ const options = {
       contact: {
         name: 'Integra',
         url: 'https://cartridge.integraledger.com/',
-        email: 'oleksandr.exp@gmail.com',
+        email: 'mrinow@integraledger.com',
       },
     },
   },
