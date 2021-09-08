@@ -520,6 +520,39 @@ router.post('/encryptWithPublicKey', upload.single('file'), core.encryptWithPubl
  */
 router.post('/decryptWithPrivateKey', core.decryptWithPrivateKey);
 
+/**
+ * @swagger
+ * path:
+ *  /attestation/:
+ *    post:
+ *      description: Embed attestation pdf
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                attachment:
+ *                  type: file
+ *                  description: Attestation pdf file.
+ *                file:
+ *                  type: file
+ *                  description: Source pdf file.
+ *      responses:
+ *        "200":
+ *          description: return embedded file
+ */
+router.post(
+  '/attestation',
+  smartDocUpload.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'attachment', maxCount: 1 },
+  ]),
+  core.attestation
+);
+
 router.post('/email', upload.single('file'), core.email);
 router.post('/readFile', upload.single('file'), core.readFile);
 router.get('/verification', core.verification);

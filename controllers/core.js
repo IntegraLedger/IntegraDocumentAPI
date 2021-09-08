@@ -9,6 +9,7 @@ const unzipper = require('unzipper');
 const zipdir = require('zip-dir');
 const parser = require('xml2json');
 const js2xmlparser = require('js2xmlparser');
+const { PDFDocument } = require('pdf-lib');
 
 /*
   Node main thread is blocking in sync functions.
@@ -1655,6 +1656,42 @@ exports.convertToPdf = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
+exports.attestation = async (req, res) => {
+  const workDir = req.workDir;
+
+  if (!req.files.file || !req.files.attachment) {
+    if (req.files.file) fs.unlinkSync(req.files.file[0].path);
+    if (req.files.attachment) fs.unlinkSync(req.files.attachment[0].path);
+    return res.status(500).send('File or attachment is missing.');
+  }
+  const srcFile = req.files.file[0];
+  const attachmentFile = req.files.attachment[0];
+
+  try {
+    const content = fs.readFileSync(srcFile.path);
+    const pdfDoc = await PDFDocument.load(content);
+
+    const attestation = fs.readFileSync(attachmentFile.path);
+
+    await pdfDoc.attach(attestation, attachmentFile.originalname, {
+      mimeType: attachmentFile.mimeType,
+      description: 'Attestation',
+    });
+    const pdfBytes = await pdfDoc.save();
+    fs.writeFileSync(`${workDir}/${srcFile.originalname}`, pdfBytes);
+    res.download(`${workDir}/${srcFile.originalname}`, srcFile.originalname, () => {
+      fs.unlinkSync(srcFile.path);
+      fs.unlinkSync(attachmentFile.path);
+      fs.rmdirSync(workDir, { recursive: true });
+    });
+  } catch (err) {
+    fs.unlinkSync(srcFile.path);
+    fs.unlinkSync(attachmentFile.path);
+    fs.rmdirSync(workDir, { recursive: true });
     res.status(err.statusCode || 500).send(err);
   }
 };
