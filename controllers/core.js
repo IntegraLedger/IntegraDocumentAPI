@@ -9,7 +9,7 @@ const unzipper = require('unzipper');
 const zipdir = require('zip-dir');
 const parser = require('xml2json');
 const js2xmlparser = require('js2xmlparser');
-const { PDFDocument } = require('pdf-lib');
+const { PDFDocument, PDFName, PDFDict, PDFArray, PDFStream, decodePDFRawStream } = require('pdf-lib');
 
 /*
   Node main thread is blocking in sync functions.
@@ -1691,6 +1691,99 @@ exports.attestation = async (req, res) => {
   } catch (err) {
     fs.unlinkSync(srcFile.path);
     fs.unlinkSync(attachmentFile.path);
+    fs.rmdirSync(workDir, { recursive: true });
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
+const extractRawAttachments = pdfDoc => {
+  if (!pdfDoc.catalog.has(PDFName.of('Names'))) return [];
+  const Names = pdfDoc.catalog.lookup(PDFName.of('Names'), PDFDict);
+
+  if (!Names.has(PDFName.of('EmbeddedFiles'))) return [];
+  const EmbeddedFiles = Names.lookup(PDFName.of('EmbeddedFiles'), PDFDict);
+
+  if (!EmbeddedFiles.has(PDFName.of('Names'))) return [];
+  const EFNames = EmbeddedFiles.lookup(PDFName.of('Names'), PDFArray);
+
+  const rawAttachments = [];
+  for (let idx = 0, len = EFNames.size(); idx < len; idx += 2) {
+    const fileName = EFNames.lookup(idx);
+    const fileSpec = EFNames.lookup(idx + 1, PDFDict);
+    rawAttachments.push({ fileName, fileSpec });
+  }
+
+  return rawAttachments;
+};
+
+const extractAttachments = pdfDoc => {
+  const rawAttachments = extractRawAttachments(pdfDoc);
+  return rawAttachments.map(({ fileName, fileSpec }) => {
+    const stream = fileSpec.lookup(PDFName.of('EF'), PDFDict).lookup(PDFName.of('F'), PDFStream);
+    return {
+      name: fileName.decodeText(),
+      data: decodePDFRawStream(stream).decode(),
+    };
+  });
+};
+
+exports.verifyAttestation = async (req, res) => {
+  const workDir = req.workDir;
+
+  if (!req.files.file[0]) {
+    return res.status(500).send('File is missing.');
+  }
+  const srcPath = req.files.file[0].path;
+
+  const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+
+  try {
+    // Get src file info
+    const fileData = await readFileAsync(srcPath);
+    const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
+    const responseJson = await getValue(encryptedData, subscription_key);
+    if (responseJson.statusCode === 401) {
+      return res.status(401).send({ message: responseJson.message });
+    }
+    if (!responseJson.exists) {
+      fs.unlinkSync(srcPath);
+      fs.rmdirSync(workDir, { recursive: true });
+      return res.send({ hashed: false });
+    }
+    const srcPdfDoc = new HummusRecipe(srcPath);
+    const info = srcPdfDoc.info();
+
+    // Get attestation file
+    const content = fs.readFileSync(srcPath);
+    const srcFile = await PDFDocument.load(content);
+    const attachments = extractAttachments(srcFile);
+    if (attachments.length === 0) {
+      fs.unlinkSync(srcPath);
+      fs.rmdirSync(workDir, { recursive: true });
+      return res.status(500).send({ message: "The file doesn't have any attachment." });
+    }
+    fs.writeFileSync(`${workDir}/attachment.pdf`, attachments[0].data);
+
+    // Get attestation file info
+    const attestationFileData = await readFileAsync(`${workDir}/attachment.pdf`);
+    const attestationEncryptedData = crypto.createHash('sha256').update(attestationFileData).digest('hex');
+    const attestationResponseJson = await getValue(attestationEncryptedData, subscription_key);
+    if (!attestationResponseJson.exists) {
+      fs.unlinkSync(srcPath);
+      fs.rmdirSync(workDir, { recursive: true });
+      return res.send({ hashed: false });
+    }
+    const attestationPdfDoc = new HummusRecipe(`${workDir}/attachment.pdf`);
+    const attestationInfo = attestationPdfDoc.info();
+
+    fs.unlinkSync(srcPath);
+    fs.rmdirSync(workDir, { recursive: true });
+    res.send({
+      info: info.infojson,
+      attestation: attestationInfo.infojson,
+    });
+  } catch (err) {
+    fs.unlinkSync(srcPath);
     fs.rmdirSync(workDir, { recursive: true });
     res.status(err.statusCode || 500).send(err);
   }

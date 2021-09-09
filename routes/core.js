@@ -553,6 +553,29 @@ router.post(
   core.attestation
 );
 
+/**
+ * @swagger
+ * path:
+ *  /verifyAttestation/:
+ *    post:
+ *      description: Return metadata for the source file and attached attestation pdf file.
+ *      tags: [Smart Doc]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          multipart/form-data:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                file:
+ *                  type: file
+ *                  description: PDF file with attestation attachment.
+ *      responses:
+ *        "200":
+ *          description: return metadata for source file and attestation
+ */
+router.post('/verifyAttestation', smartDocUpload.fields([{ name: 'file', maxCount: 1 }]), core.verifyAttestation);
+
 router.post('/email', upload.single('file'), core.email);
 router.post('/readFile', upload.single('file'), core.readFile);
 router.get('/verification', core.verification);
