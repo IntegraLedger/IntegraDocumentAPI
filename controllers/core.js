@@ -1351,6 +1351,35 @@ exports.qrVerify = async (req, res) => {
   }
 };
 
+exports.recordExist = async (req, res) => {
+  try {
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': subscription_key,
+      },
+    });
+    const result = await response.json();
+    if (result.statusCode === 401) {
+      throw { statusCode: 401, message: result.message };
+    }
+    if (result.exists) {
+      res.send({
+        integraId: result.data[result.data.length - 1].Record.integraId,
+        value: result.data[result.data.length - 1].Record.value,
+        metaData: result.data[result.data.length - 1].Record.metaData,
+        creationDate: moment(result.data[result.data.length - 1].Record.creationDate).format('LLL'),
+      });
+    } else {
+      res.status(500).send("Record doesn't exist");
+    }
+  } catch (err) {
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
 exports.publicKey = async (req, res) => {
   try {
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];

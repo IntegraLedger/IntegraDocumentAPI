@@ -390,6 +390,30 @@ router.get('/QRVerify/:guid', core.qrVerify);
 /**
  * @swagger
  * path:
+ *  /recordExist/{guid}:
+ *    get:
+ *      description: Check if document(pdf & docx) is already registered by two APIs /pdf and /doc
+ *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *        - in: path
+ *          name: guid
+ *          schema:
+ *            type: string
+ *          required: true
+ *          description: GUID of the file to check
+ *      responses:
+ *        "200":
+ *          description: return document registration record.
+ */
+router.get('/recordExist/:guid', core.recordExist);
+
+/**
+ * @swagger
+ * path:
  *  /publicKey/{id}:
  *    get:
  *      description: Get public key of the smart document
