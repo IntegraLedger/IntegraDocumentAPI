@@ -1810,6 +1810,8 @@ exports.verifyAttestation = async (req, res) => {
     res.send({
       info: info.infojson,
       attestation: attestationInfo.infojson,
+      attestationCreationDate: attestationResponseJson.data[attestationResponseJson.data.length - 1].Record.creationDate,
+      attestationIntegraId: attestationResponseJson.data[attestationResponseJson.data.length - 1].Record.integraId,
     });
   } catch (err) {
     fs.unlinkSync(srcPath);
