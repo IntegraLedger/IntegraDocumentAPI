@@ -162,6 +162,22 @@ router.post('/analyzeDocxNohash', upload.single('file'), core.analyzeDocxNohash)
  *          name: x-subscription-key
  *          schema:
  *            type: string
+ *        - in: header
+ *          name: integra-id
+ *          schema:
+ *            type: string
+ *        - in: header
+ *          name: opt1
+ *          schema:
+ *            type: string
+ *        - in: header
+ *          name: opt2
+ *          schema:
+ *            type: string
+ *        - in: header
+ *          name: opt3
+ *          schema:
+ *            type: string
  *      responses:
  *        "200":
  *          description: return signed pdf file
@@ -178,6 +194,22 @@ router.post('/pdf', upload.single('file'), core.pdf);
  *      parameters:
  *        - in: header
  *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *        - in: header
+ *          name: integra-id
+ *          schema:
+ *            type: string
+ *        - in: header
+ *          name: opt1
+ *          schema:
+ *            type: string
+ *        - in: header
+ *          name: opt2
+ *          schema:
+ *            type: string
+ *        - in: header
+ *          name: opt3
  *          schema:
  *            type: string
  *      requestBody:

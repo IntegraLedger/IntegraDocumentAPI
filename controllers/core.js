@@ -93,21 +93,21 @@ const encryptStringWithRsaPrivateKey = (toEncrypt, privateKey) => {
   return signature.toString('base64');
 };
 
-const registerIdentity = async (filePath, guid, subscriptionKey, opt1 = '') => {
+const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) => {
   // SHA-256 hash file
   const fileData = await readFileAsync(filePath);
   const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
   const response = await fetch(`${BLOCKCHAIN_API_URL}/registerIdentity`, {
     method: 'post',
     body: JSON.stringify({
-      integraId: uuidv1(),
+      integraId: params.integraId || uuidv1(),
       identityType: 'com.integraledger.lmatid',
       metaData: 'Integra Smart Document',
       value: encryptedData,
       recordId: guid,
-      opt1,
-      opt2: '',
-      opt3: '',
+      opt1: params.opt1 || '',
+      opt2: params.opt2 || '',
+      opt3: params.opt3 || '',
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -424,6 +424,10 @@ exports.pdf = async (req, res) => {
   try {
     const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr } = req.body;
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const integraId = req.headers['integra-id'];
+    const opt1 = req.headers.opt1;
+    const opt2 = req.headers.opt2;
+    const opt3 = req.headers.opt3;
     const meta = JSON.parse(meta_form);
     const { pass_phrase } = meta;
     delete meta.pass_phrase;
@@ -560,7 +564,13 @@ exports.pdf = async (req, res) => {
       `modified/${fileName}`,
       guid,
       subscription_key,
-      cartridgeType && cartridgeType === 'Vendor' ? guid : ''
+      {
+        integraId,
+        opt1,
+        opt2,
+        opt3,
+      }
+      // cartridgeType && cartridgeType === 'Vendor' ? guid : ''
     );
 
     // Attach file name to response header
@@ -596,6 +606,10 @@ exports.pdf = async (req, res) => {
 exports.doc = async (req, res) => {
   try {
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const integraId = req.headers['integra-id'];
+    const opt1 = req.headers.opt1;
+    const opt2 = req.headers.opt2;
+    const opt3 = req.headers.opt3;
     const { master_id, meta_form, data_form, hide_qr } = req.body;
 
     const meta = JSON.parse(meta_form);
@@ -671,7 +685,12 @@ exports.doc = async (req, res) => {
     const fileName = `${req.file.originalname.substring(0, req.file.originalname.length - 4)}_SmartDoc.pdf`;
     await renameFileAsync(`modified/${req.file.filename}`, `modified/${fileName}`);
 
-    const encryptedData = await registerIdentity(`modified/${fileName}`, guid, subscription_key);
+    const encryptedData = await registerIdentity(`modified/${fileName}`, guid, subscription_key, {
+      integraId,
+      opt1,
+      opt2,
+      opt3,
+    });
 
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
