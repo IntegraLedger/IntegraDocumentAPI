@@ -781,7 +781,7 @@ exports.docxSmartdoc = async (req, res) => {
     });
     obj.Variable.push({
       '@': { Name: 'formJSON' },
-      Value: data_form,
+      Value: data_form || '{}',
     });
     obj.Variable.push({
       '@': { Name: 'id' },
@@ -929,7 +929,7 @@ exports.xlsSmartdoc = async (req, res) => {
     });
     obj.Variable.push({
       '@': { Name: 'formJSON' },
-      Value: data_form,
+      Value: data_form || '{}',
     });
     obj.Variable.push({
       '@': { Name: 'id' },
@@ -1093,7 +1093,7 @@ exports.docxSmartDocAutoOpen = async (req, res) => {
     });
     obj.Variable.push({
       '@': { Name: 'formJSON' },
-      Value: data_form,
+      Value: data_form || '{}',
     });
     obj.Variable.push({
       '@': { Name: 'id' },

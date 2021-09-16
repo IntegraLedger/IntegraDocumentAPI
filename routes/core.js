@@ -62,6 +62,8 @@ const smartDocUpload = multer({
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - file
  *              properties:
  *                file:
  *                  type: file
@@ -99,6 +101,8 @@ router.post('/analyze', upload.single('file'), core.analyze);
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - file
  *              properties:
  *                file:
  *                  type: file
@@ -131,6 +135,9 @@ router.post('/analyzeDocxNohash', upload.single('file'), core.analyzeDocxNohash)
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - meta_form
+ *                - file
  *              properties:
  *                master_id:
  *                  type: string
@@ -218,6 +225,9 @@ router.post('/pdf', upload.single('file'), core.pdf);
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - meta_form
+ *                - file
  *              properties:
  *                master_id:
  *                  type: string
@@ -260,6 +270,9 @@ router.post('/doc', upload.single('file'), core.doc);
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - meta_form
+ *                - file
  *              properties:
  *                master_id:
  *                  type: string
@@ -312,6 +325,9 @@ router.post(
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - meta_form
+ *                - file
  *              properties:
  *                master_id:
  *                  type: string
@@ -358,6 +374,9 @@ router.post(
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - meta_form
+ *                - file
  *              properties:
  *                master_id:
  *                  type: string
@@ -589,6 +608,9 @@ router.post('/decryptWithPrivateKey', core.decryptWithPrivateKey);
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - attachment
+ *                - file
  *              properties:
  *                attachment:
  *                  type: file
@@ -622,6 +644,8 @@ router.post(
  *          multipart/form-data:
  *            schema:
  *              type: object
+ *              required:
+ *                - file
  *              properties:
  *                file:
  *                  type: file
