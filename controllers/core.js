@@ -460,7 +460,7 @@ exports.pdf = async (req, res) => {
       infoDictionary.addAdditionalInfoEntry(key, meta[key]);
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
-    infoDictionary.addAdditionalInfoEntry('formJSON', data_form);
+    infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
     const guid = !isHedgePublic ? uuidv1() : req.query.private_id;
     infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
@@ -632,7 +632,7 @@ exports.doc = async (req, res) => {
       infoDictionary.addAdditionalInfoEntry(key, meta[key]);
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
-    infoDictionary.addAdditionalInfoEntry('formJSON', data_form);
+    infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
     const guid = uuidv1();
     infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
