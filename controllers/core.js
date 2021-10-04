@@ -1389,6 +1389,7 @@ exports.recordExist = async (req, res) => {
         integraId: result.data[result.data.length - 1].Record.integraId,
         value: result.data[result.data.length - 1].Record.value,
         metaData: result.data[result.data.length - 1].Record.metaData,
+        transactionId: result.data[result.data.length - 1].Record.transactionId,
         creationDate: moment(result.data[result.data.length - 1].Record.creationDate).format('LLL'),
       });
     } else {
