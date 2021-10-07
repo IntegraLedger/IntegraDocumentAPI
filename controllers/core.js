@@ -3,6 +3,7 @@
 const QRCode = require('qrcode');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
+const cryptoJs = require('crypto-js');
 
 const algorithm = 'aes-256-cbc';
 const unzipper = require('unzipper');
@@ -72,6 +73,9 @@ const PDFDigitalForm = require('../pdf-digital-form');
 const isProd = process.env.APP_ENV === 'production';
 
 const BLOCKCHAIN_API_URL = isProd ? 'https://integraledger.azure-api.net/api/v1.5' : 'https://productionapis.azure-api.net';
+
+const CARTRIDGE_TYPE_PRIVATE_KEY = 'PrivateKey';
+const CARTRIDGE_TYPE_PERSONAL = 'Personal';
 
 const getValue = async (data, subscriptionKey) => {
   const response = await fetch(`${BLOCKCHAIN_API_URL}/valueexists/${data}`, {
@@ -431,19 +435,23 @@ exports.pdf = async (req, res) => {
     const meta = JSON.parse(meta_form);
     const { pass_phrase } = meta;
     delete meta.pass_phrase;
-    let readingFileName =
-      cartridgeType !== 'Organization' &&
-      cartridgeType !== 'Personal' &&
-      cartridgeType !== 'Encrypt' &&
-      cartridgeType !== 'Purchaser' &&
-      cartridgeType !== 'Vendor' &&
-      cartridgeType !== 'VendorContract' &&
-      cartridgeType !== 'PurchaseOrder' &&
-      cartridgeType !== 'Invoice'
-        ? 'CartridgeGeneric'
-        : cartridgeType;
 
-    const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === 'Personal' && req.query.private_id;
+    let readingFileName = [
+      'Organization',
+      'Organization',
+      CARTRIDGE_TYPE_PERSONAL,
+      'Encrypt',
+      'Purchaser',
+      'Vendor',
+      'VendorContract',
+      'PurchaseOrder',
+      'Invoice',
+      CARTRIDGE_TYPE_PRIVATE_KEY,
+    ].includes(cartridgeType)
+      ? cartridgeType
+      : 'CartridgeGeneric';
+
+    const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === CARTRIDGE_TYPE_PERSONAL && req.query.private_id;
     if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
       readingFileName = 'Personal_Private';
       if (req.query.private_id) readingFileName = 'Personal_Public';
@@ -464,7 +472,7 @@ exports.pdf = async (req, res) => {
     const guid = !isHedgePublic ? uuidv1() : req.query.private_id;
     infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
-    if (cartridgeType && cartridgeType === 'Personal' && !isHedgePublic) {
+    if (cartridgeType && cartridgeType === CARTRIDGE_TYPE_PERSONAL && !isHedgePublic) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
@@ -486,12 +494,12 @@ exports.pdf = async (req, res) => {
       infoDictionary.addAdditionalInfoEntry('encrypted_passphrase', encrypted);
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
     }
-    if (cartridgeType && (cartridgeType === 'Purchaser' || cartridgeType === 'Vendor')) {
+    if (cartridgeType && ['Purchaser', 'Vendor', CARTRIDGE_TYPE_PRIVATE_KEY].includes(cartridgeType)) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
       });
       const pubkeyString = publicKey.export({ type: 'pkcs1', format: 'pem' });
-      const privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
+      let privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
 
       const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
         method: 'post',
@@ -504,6 +512,11 @@ exports.pdf = async (req, res) => {
       if (result.statusCode === 401) {
         throw { statusCode: 401, message: result.message };
       }
+
+      if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+        privkeyString = cryptoJs.AES.encrypt(privkeyString, pass_phrase).toString();
+      }
+
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
     }
     // Fill form fields
