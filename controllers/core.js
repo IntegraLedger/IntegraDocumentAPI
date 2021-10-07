@@ -519,8 +519,13 @@ exports.pdf = async (req, res) => {
 
       infoDictionary.addAdditionalInfoEntry('private_key', privkeyString);
     }
+
     // Fill form fields
-    meta.id = guid;
+    if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+      meta.integra_id = guid;
+    } else {
+      meta.id = guid;
+    }
     fillForm(writer, meta);
 
     if (!hide_qr || hide_qr === 'false') {
