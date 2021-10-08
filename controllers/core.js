@@ -470,7 +470,13 @@ exports.pdf = async (req, res) => {
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
     infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
     const guid = !isHedgePublic ? uuidv1() : req.query.private_id;
-    infoDictionary.addAdditionalInfoEntry('id', guid);
+
+    if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+      infoDictionary.addAdditionalInfoEntry('integra_id', guid);
+    } else {
+      infoDictionary.addAdditionalInfoEntry('id', guid);
+    }
+
     if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
     if (cartridgeType && cartridgeType === CARTRIDGE_TYPE_PERSONAL && !isHedgePublic) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
@@ -521,11 +527,7 @@ exports.pdf = async (req, res) => {
     }
 
     // Fill form fields
-    if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
-      meta.integra_id = guid;
-    } else {
-      meta.id = guid;
-    }
+    meta.id = guid;
     fillForm(writer, meta);
 
     if (!hide_qr || hide_qr === 'false') {
