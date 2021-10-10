@@ -101,6 +101,14 @@ const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) =>
   // SHA-256 hash file
   const fileData = await readFileAsync(filePath);
   const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
+
+  let publicKeyObj = {};
+  if (params.integraPublicKeyId) {
+    publicKeyObj = {
+      integraPublicKeyId: params.integraPublicKeyId,
+    };
+  }
+
   const response = await fetch(`${BLOCKCHAIN_API_URL}/registerIdentity`, {
     method: 'post',
     body: JSON.stringify({
@@ -112,6 +120,7 @@ const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) =>
       opt1: params.opt1 || '',
       opt2: params.opt2 || '',
       opt3: params.opt3 || '',
+      ...publicKeyObj,
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -426,7 +435,7 @@ exports.analyzeDocxNohash = async (req, res) => {
 
 exports.pdf = async (req, res) => {
   try {
-    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr } = req.body;
+    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr, key_data } = req.body;
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const integraId = req.headers['integra-id'];
     const opt1 = req.headers.opt1;
@@ -580,6 +589,16 @@ exports.pdf = async (req, res) => {
       : `${readingFileName}_Cartridge.pdf`;
     await renameFileAsync(`modified/${req.file ? req.file.filename : `${readingFileName}.pdf`}`, `modified/${fileName}`);
 
+    let integraPublicKeyId;
+    if (key_data) {
+      const { pass_phrase: password, private_key: encryptedPrivateKey } = JSON.parse(key_data);
+      const decryptedPrivateKey = cryptoJs.AES.decrypt(encryptedPrivateKey, password).toString(cryptoJs.enc.Utf8);
+
+      const fileData = await readFileAsync(req.file.path);
+      const hash = cryptoJs.SHA256(fileData).toString(cryptoJs.enc.Hex);
+      integraPublicKeyId = encryptStringWithRsaPrivateKey(hash, decryptedPrivateKey);
+    }
+
     const encryptedData = await registerIdentity(
       `modified/${fileName}`,
       guid,
@@ -589,6 +608,7 @@ exports.pdf = async (req, res) => {
         opt1,
         opt2,
         opt3,
+        integraPublicKeyId,
       }
       // cartridgeType && cartridgeType === 'Vendor' ? guid : ''
     );
@@ -1856,6 +1876,17 @@ exports.verifyAttestation = async (req, res) => {
   } catch (err) {
     fs.unlinkSync(srcPath);
     fs.rmdirSync(workDir, { recursive: true });
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+
+exports.verifyPrivateKey = (req, res) => {
+  const { private_key, pass_phrase } = req.body;
+
+  try {
+    cryptoJs.AES.decrypt(private_key, pass_phrase).toString(cryptoJs.enc.Utf8);
+    res.send({ verified: true });
+  } catch (err) {
     res.status(err.statusCode || 500).send(err);
   }
 };
