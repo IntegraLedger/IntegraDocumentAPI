@@ -435,7 +435,7 @@ exports.analyzeDocxNohash = async (req, res) => {
 
 exports.pdf = async (req, res) => {
   try {
-    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr, key_data } = req.body;
+    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr, key_data, privateKeyGuid } = req.body;
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const integraId = req.headers['integra-id'];
     const opt1 = req.headers.opt1;
@@ -461,7 +461,7 @@ exports.pdf = async (req, res) => {
       : 'CartridgeGeneric';
 
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === CARTRIDGE_TYPE_PERSONAL && req.query.private_id;
-    if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') {
+    if (req.query.type === 'hedgefund' && cartridgeType === CARTRIDGE_TYPE_PERSONAL) {
       readingFileName = 'Personal_Private';
       if (req.query.private_id) readingFileName = 'Personal_Public';
     }
@@ -478,7 +478,14 @@ exports.pdf = async (req, res) => {
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
     infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
-    const guid = !isHedgePublic ? uuidv1() : req.query.private_id;
+
+    let guid;
+    if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+      // GUID is generated on frontent sides
+      guid = privateKeyGuid;
+    } else {
+      guid = !isHedgePublic ? uuidv1() : req.query.private_id;
+    }
 
     if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
       infoDictionary.addAdditionalInfoEntry('integra_id', guid);
