@@ -107,6 +107,7 @@ const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) =>
   if (params.integraPublicKeyId) {
     publicKeyObj = {
       integraPublicKeyId: params.integraPublicKeyId,
+      opt1: params.signedHash,
     };
   }
 
@@ -116,7 +117,7 @@ const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) =>
       integraId: params.integraId || uuidv1(),
       identityType: 'com.integraledger.lmatid',
       metaData: 'Integra Smart Document',
-      value: encryptedData,
+      value: params.value || encryptedData,
       recordId: guid,
       opt1: params.opt1 || '',
       opt2: params.opt2 || '',
@@ -445,6 +446,7 @@ exports.pdf = async (req, res) => {
       key_data,
       existingGuid,
       is_tokenize: isTokenize,
+      tokenized_pubkey_id: integraPublicKeyId,
     } = req.body;
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const integraId = req.headers['integra-id'] || uuidv1();
@@ -618,14 +620,14 @@ exports.pdf = async (req, res) => {
       : `${readingFileName}_Cartridge.pdf`;
     await renameFileAsync(`modified/${req.file ? req.file.filename : `${readingFileName}.pdf`}`, `modified/${fileName}`);
 
-    let integraPublicKeyId;
+    let signedHash;
     if (key_data) {
       const { pass_phrase: password, private_key: encryptedPrivateKey } = JSON.parse(key_data);
       const decryptedPrivateKey = cryptoJs.AES.decrypt(encryptedPrivateKey, password).toString(cryptoJs.enc.Utf8);
 
       const fileData = await readFileAsync(req.file.path);
       const hash = cryptoJs.SHA256(fileData).toString(cryptoJs.enc.Hex);
-      integraPublicKeyId = encryptStringWithRsaPrivateKey(hash, decryptedPrivateKey);
+      signedHash = encryptStringWithRsaPrivateKey(hash, decryptedPrivateKey);
     }
 
     const encryptedData = await registerIdentity(
@@ -638,6 +640,7 @@ exports.pdf = async (req, res) => {
         opt2,
         opt3,
         integraPublicKeyId,
+        signedHash,
       }
       // cartridgeType && cartridgeType === 'Vendor' ? guid : ''
     );
