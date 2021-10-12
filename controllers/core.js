@@ -75,6 +75,7 @@ const isProd = process.env.APP_ENV === 'production';
 const BLOCKCHAIN_API_URL = isProd ? 'https://integraledger.azure-api.net/api/v1.5' : 'https://productionapis.azure-api.net';
 
 const CARTRIDGE_TYPE_PRIVATE_KEY = 'PrivateKey';
+const CARTRIDGE_TYPE_ATTESTATION = 'Attestation';
 const CARTRIDGE_TYPE_PERSONAL = 'Personal';
 
 const getValue = async (data, subscriptionKey) => {
@@ -435,7 +436,7 @@ exports.analyzeDocxNohash = async (req, res) => {
 
 exports.pdf = async (req, res) => {
   try {
-    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr, key_data, privateKeyGuid } = req.body;
+    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr, key_data, existingGuid } = req.body;
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const integraId = req.headers['integra-id'];
     const opt1 = req.headers.opt1;
@@ -456,6 +457,7 @@ exports.pdf = async (req, res) => {
       'PurchaseOrder',
       'Invoice',
       CARTRIDGE_TYPE_PRIVATE_KEY,
+      CARTRIDGE_TYPE_ATTESTATION,
     ].includes(cartridgeType)
       ? cartridgeType
       : 'CartridgeGeneric';
@@ -470,30 +472,39 @@ exports.pdf = async (req, res) => {
     const writer = hummus.createWriterToModify(req.file ? req.file.path : `templates/${readingFileName}.pdf`, {
       modifiedFilePath: `modified/${req.file ? req.file.filename : `${readingFileName}.pdf`}`,
     });
+
     const reader = hummus.createReader(req.file ? req.file.path : `templates/${readingFileName}.pdf`);
+
     // Add meta data
     const infoDictionary = writer.getDocumentContext().getInfoDictionary();
+
     for (const key of Object.keys(meta)) {
       infoDictionary.addAdditionalInfoEntry(key, meta[key]);
     }
-    infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
-    infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
+
+    if (cartridgeType !== CARTRIDGE_TYPE_ATTESTATION) {
+      infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
+      infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
+    }
 
     let guid;
-    if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+    if ([CARTRIDGE_TYPE_ATTESTATION, CARTRIDGE_TYPE_PRIVATE_KEY].includes(cartridgeType)) {
       // GUID is generated on frontent sides
-      guid = privateKeyGuid;
+      guid = existingGuid;
     } else {
       guid = !isHedgePublic ? uuidv1() : req.query.private_id;
     }
 
-    if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
-      infoDictionary.addAdditionalInfoEntry('integra_id', guid);
-    } else {
-      infoDictionary.addAdditionalInfoEntry('id', guid);
+    if (cartridgeType !== CARTRIDGE_TYPE_ATTESTATION) {
+      if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+        infoDictionary.addAdditionalInfoEntry('integraId', guid);
+      } else {
+        infoDictionary.addAdditionalInfoEntry('id', guid);
+      }
+
+      if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
     }
 
-    if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
     if (cartridgeType && cartridgeType === CARTRIDGE_TYPE_PERSONAL && !isHedgePublic) {
       const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 4096,
@@ -626,11 +637,11 @@ exports.pdf = async (req, res) => {
     if (req.file) finalFileName = fileName;
     else {
       if (cartridgeType === 'Organization') finalFileName = `${meta.organization_name} Key.pdf`;
-      else if (cartridgeType === 'Personal') finalFileName = `${meta.given_name} ${meta.family_name} Key.pdf`;
+      else if (cartridgeType === CARTRIDGE_TYPE_PERSONAL) finalFileName = `${meta.given_name} ${meta.family_name} Key.pdf`;
       else if (cartridgeType === 'Encrypt') finalFileName = 'Encrypt.pdf';
       else finalFileName = `${cartridgeType}.pdf`;
 
-      if (req.query.type === 'hedgefund' && cartridgeType === 'Personal') finalFileName = `${readingFileName}.pdf`;
+      if (req.query.type === 'hedgefund' && cartridgeType === CARTRIDGE_TYPE_PERSONAL) finalFileName = `${readingFileName}.pdf`;
     }
     res.setHeader('file-name', finalFileName);
     res.setHeader('id', guid);
