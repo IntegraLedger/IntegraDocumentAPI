@@ -117,7 +117,7 @@ const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) =>
       integraId: params.integraId || uuidv1(),
       identityType: 'com.integraledger.lmatid',
       metaData: 'Integra Smart Document',
-      value: params.value || encryptedData,
+      value: encryptedData,
       recordId: guid,
       opt1: params.opt1 || '',
       opt2: params.opt2 || '',
