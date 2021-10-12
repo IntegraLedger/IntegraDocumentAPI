@@ -436,9 +436,18 @@ exports.analyzeDocxNohash = async (req, res) => {
 
 exports.pdf = async (req, res) => {
   try {
-    const { master_id, cartridge_type: cartridgeType, meta_form, data_form, hide_qr, key_data, existingGuid } = req.body;
+    const {
+      master_id,
+      cartridge_type: cartridgeType,
+      meta_form,
+      data_form,
+      hide_qr,
+      key_data,
+      existingGuid,
+      is_tokenize: isTokenize,
+    } = req.body;
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
-    const integraId = req.headers['integra-id'];
+    const integraId = req.headers['integra-id'] || uuidv1();
     const opt1 = req.headers.opt1;
     const opt2 = req.headers.opt2;
     const opt3 = req.headers.opt3;
@@ -498,8 +507,10 @@ exports.pdf = async (req, res) => {
     if (cartridgeType !== CARTRIDGE_TYPE_ATTESTATION) {
       if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
         infoDictionary.addAdditionalInfoEntry('integraId', guid);
-      } else {
+      } else if (!isTokenize) {
         infoDictionary.addAdditionalInfoEntry('id', guid);
+      } else {
+        infoDictionary.addAdditionalInfoEntry('integraId', integraId);
       }
 
       if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
@@ -664,7 +675,7 @@ exports.pdf = async (req, res) => {
 exports.doc = async (req, res) => {
   try {
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
-    const integraId = req.headers['integra-id'];
+    const integraId = req.headers['integra-id'] || uuidv1();
     const opt1 = req.headers.opt1;
     const opt2 = req.headers.opt2;
     const opt3 = req.headers.opt3;
