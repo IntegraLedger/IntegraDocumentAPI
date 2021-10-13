@@ -1804,6 +1804,8 @@ exports.attestation = async (req, res) => {
     });
     const pdfBytes = await pdfDoc.save();
     fs.writeFileSync(`${workDir}/${srcFile.originalname}`, pdfBytes);
+    res.setHeader('Access-Control-Expose-Headers', 'file-name');
+    res.setHeader('file-name', srcFile.originalname);
     res.download(`${workDir}/${srcFile.originalname}`, srcFile.originalname, () => {
       fs.unlinkSync(srcFile.path);
       fs.unlinkSync(attachmentFile.path);
