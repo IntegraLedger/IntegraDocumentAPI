@@ -626,7 +626,7 @@ router.post(
   '/attestation',
   smartDocUpload.fields([
     { name: 'file', maxCount: 1 },
-    { name: 'attachment', maxCount: 1 },
+    { name: 'attachment', maxCount: 8 },
   ]),
   core.attestation
 );

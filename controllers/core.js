@@ -1786,34 +1786,44 @@ exports.attestation = async (req, res) => {
 
   if (!req.files.file || !req.files.attachment) {
     if (req.files.file) fs.unlinkSync(req.files.file[0].path);
-    if (req.files.attachment) fs.unlinkSync(req.files.attachment[0].path);
+    if (req.files.attachment) {
+      req.files.attachment.forEach(attachment => {
+        fs.unlinkSync(attachment.path);
+      });
+    }
     return res.status(500).send('File or attachment is missing.');
   }
   const srcFile = req.files.file[0];
-  const attachmentFile = req.files.attachment[0];
+  const attachments = req.files.attachment;
 
   try {
     const content = fs.readFileSync(srcFile.path);
     const pdfDoc = await PDFDocument.load(content);
 
-    const attestation = fs.readFileSync(attachmentFile.path);
-
-    await pdfDoc.attach(attestation, attachmentFile.originalname, {
-      mimeType: attachmentFile.mimeType,
-      description: 'Attestation',
+    const promises = attachments.map((attachment, index) => {
+      const attestation = fs.readFileSync(attachment.path);
+      return pdfDoc.attach(attestation, attachment.originalname, {
+        mimeType: attachment.mimeType,
+        description: `Attestation ${index + 1}`,
+      });
     });
+    await Promise.all(promises);
     const pdfBytes = await pdfDoc.save();
     fs.writeFileSync(`${workDir}/${srcFile.originalname}`, pdfBytes);
     res.setHeader('Access-Control-Expose-Headers', 'file-name');
     res.setHeader('file-name', srcFile.originalname);
     res.download(`${workDir}/${srcFile.originalname}`, srcFile.originalname, () => {
       fs.unlinkSync(srcFile.path);
-      fs.unlinkSync(attachmentFile.path);
+      attachments.forEach(attachment => {
+        fs.unlinkSync(attachment.path);
+      });
       fs.rmdirSync(workDir, { recursive: true });
     });
   } catch (err) {
     fs.unlinkSync(srcFile.path);
-    fs.unlinkSync(attachmentFile.path);
+    attachments.forEach(attachment => {
+      fs.unlinkSync(attachment.path);
+    });
     fs.rmdirSync(workDir, { recursive: true });
     res.status(err.statusCode || 500).send(err);
   }
