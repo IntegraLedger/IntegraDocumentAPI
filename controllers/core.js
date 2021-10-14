@@ -108,7 +108,7 @@ const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) =>
   if (params.integraPublicKeyId) {
     publicKeyObj = {
       integraPublicKeyId: params.integraPublicKeyId,
-      opt1: params.signedHash,
+      signedvalue: params.signedHash,
     };
   }
 
