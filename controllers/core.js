@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable newline-per-chained-call */
 /* eslint-disable no-throw-literal */
 const QRCode = require('qrcode');
@@ -1895,27 +1896,35 @@ exports.verifyAttestation = async (req, res) => {
       fs.rmdirSync(workDir, { recursive: true });
       return res.status(500).send({ message: "The file doesn't have any attachment." });
     }
-    fs.writeFileSync(`${workDir}/attachment.pdf`, attachments[0].data);
+    const attestations = [];
+    for (let i = 0; i < attachments.length; i++) {
+      fs.writeFileSync(`${workDir}/attachment${i}.pdf`, attachments[i].data);
 
-    // Get attestation file info
-    const attestationFileData = await readFileAsync(`${workDir}/attachment.pdf`);
-    const attestationEncryptedData = crypto.createHash('sha256').update(attestationFileData).digest('hex');
-    const attestationResponseJson = await getValue(attestationEncryptedData, subscription_key);
-    if (!attestationResponseJson.exists) {
-      fs.unlinkSync(srcPath);
-      fs.rmdirSync(workDir, { recursive: true });
-      return res.send({ hashed: false });
+      // Get attestation file info
+      const attestationFileData = await readFileAsync(`${workDir}/attachment${i}.pdf`);
+      const attestationEncryptedData = crypto.createHash('sha256').update(attestationFileData).digest('hex');
+      const attestationResponseJson = await getValue(attestationEncryptedData, subscription_key);
+      if (!attestationResponseJson.exists) {
+        attestations.push({
+          hashed: false,
+        });
+      } else {
+        const attestationPdfDoc = new HummusRecipe(`${workDir}/attachment${i}.pdf`);
+        const attestationInfo = attestationPdfDoc.info();
+        attestations.push({
+          hashed: true,
+          attestation: attestationInfo,
+          attestationCreationDate: attestationResponseJson.data[attestationResponseJson.data.length - 1].Record.creationDate,
+          attestationIntegraId: attestationResponseJson.data[attestationResponseJson.data.length - 1].Record.integraId,
+        });
+      }
     }
-    const attestationPdfDoc = new HummusRecipe(`${workDir}/attachment.pdf`);
-    const attestationInfo = attestationPdfDoc.info();
 
     fs.unlinkSync(srcPath);
     fs.rmdirSync(workDir, { recursive: true });
     res.send({
       info: info.infojson,
-      attestation: attestationInfo.infojson,
-      attestationCreationDate: attestationResponseJson.data[attestationResponseJson.data.length - 1].Record.creationDate,
-      attestationIntegraId: attestationResponseJson.data[attestationResponseJson.data.length - 1].Record.integraId,
+      attestations,
     });
   } catch (err) {
     fs.unlinkSync(srcPath);
