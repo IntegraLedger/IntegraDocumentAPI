@@ -525,7 +525,7 @@ exports.pdf = async (req, res) => {
       const pubkeyString = publicKey.export({ type: 'pkcs1', format: 'pem' });
       const privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
 
-      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&integraId=${guid}`, {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
@@ -547,7 +547,7 @@ exports.pdf = async (req, res) => {
       const pubkeyString = publicKey.export({ type: 'pkcs1', format: 'pem' });
       let privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
 
-      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&owner=${guid}`, {
+      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&integraId=${guid}`, {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
