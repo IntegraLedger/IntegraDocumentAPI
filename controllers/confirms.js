@@ -38,8 +38,10 @@ exports.email = async (req, res) => {
       to: req.body.email,
       from: 'no-reply@integraledger.com',
       subject: 'Verify for Attestation document',
-      // eslint-disable-next-line max-len
-      html: `<img style="width: 200px;" src="https://hedgefund.z20.web.core.windows.net/img/logo_integra.0da1373e.png"/><br/>Your verification code is: <br/><big>${req.body.confirmCode}</big>`,
+      templateId: 'd-47c095607f054290b0edea569772fa61',
+      dynamicTemplateData: {
+        confirmation_code: req.body.confirmCode,
+      },
     };
 
     await sgMail.send(msg);

@@ -10,3 +10,7 @@ qr-logo.png
 .env.prod
 .env.local
 .env.*.local
+
+*.todo
+.tool-versions
+.vscode
