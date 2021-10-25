@@ -503,12 +503,15 @@ exports.pdf = async (req, res) => {
     if ([CARTRIDGE_TYPE_ATTESTATION, CARTRIDGE_TYPE_PRIVATE_KEY].includes(cartridgeType)) {
       // GUID is generated on frontent sides
       guid = existingGuid;
-    } else {
+    } else if (!isTokenize) {
       guid = !isHedgePublic ? uuidv1() : req.query.private_id;
+    } else {
+      guid = integraId;
     }
 
     if (cartridgeType !== CARTRIDGE_TYPE_ATTESTATION) {
       if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+        meta.integraId = guid;
         infoDictionary.addAdditionalInfoEntry('integraId', guid);
       } else if (!isTokenize) {
         infoDictionary.addAdditionalInfoEntry('id', guid);
