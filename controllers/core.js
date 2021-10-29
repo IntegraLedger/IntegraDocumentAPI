@@ -99,7 +99,7 @@ const encryptStringWithRsaPrivateKey = (toEncrypt, privateKey) => {
   return signature.toString('base64');
 };
 
-const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) => {
+const registerIdentity = async (filePath, integraId, subscriptionKey, params = {}) => {
   // SHA-256 hash file
   const fileData = await readFileAsync(filePath);
   const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
@@ -115,11 +115,10 @@ const registerIdentity = async (filePath, guid, subscriptionKey, params = {}) =>
   const response = await fetch(`${BLOCKCHAIN_API_URL}/registerIdentity`, {
     method: 'post',
     body: JSON.stringify({
-      integraId: params.integraId || uuidv1(),
+      integraId,
       identityType: 'com.integraledger.lmatid',
       metaData: 'Integra Smart Document',
       value: encryptedData,
-      recordId: guid,
       opt1: params.opt1 || '',
       opt2: params.opt2 || '',
       opt3: params.opt3 || '',
@@ -279,7 +278,7 @@ const getHeaderTextAddedDoc = async docData => {
 
 const generateQRData = async (guid, logoPath) => {
   const canvas = createCanvas(200, 200);
-  QRCode.toCanvas(canvas, `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`, {
+  QRCode.toCanvas(canvas, `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`, {
     errorCorrectionLevel: 'H',
     margin: 1,
     color: {
@@ -310,6 +309,7 @@ exports.analyze = async (req, res) => {
       result = {
         result: info,
         creationDate: responseJson.data[responseJson.data.length - 1].Record.creationDate,
+        transactionId: responseJson.data[responseJson.data.length - 1].Record.transactionId,
       };
     } else {
       result = { result: false };
@@ -446,7 +446,6 @@ exports.pdf = async (req, res) => {
       hide_qr,
       key_data,
       existingGuid,
-      is_tokenize: isTokenize,
       tokenized_pubkey_id: integraPublicKeyId,
     } = req.body;
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
@@ -503,21 +502,15 @@ exports.pdf = async (req, res) => {
     if ([CARTRIDGE_TYPE_ATTESTATION, CARTRIDGE_TYPE_PRIVATE_KEY].includes(cartridgeType)) {
       // GUID is generated on frontent sides
       guid = existingGuid;
-    } else if (!isTokenize) {
-      guid = !isHedgePublic ? uuidv1() : req.query.private_id;
     } else {
-      guid = integraId;
+      guid = !isHedgePublic ? integraId : req.query.private_id;
     }
 
     if (cartridgeType !== CARTRIDGE_TYPE_ATTESTATION) {
       if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
         meta.integraId = guid;
-        infoDictionary.addAdditionalInfoEntry('integraId', guid);
-      } else if (!isTokenize) {
-        infoDictionary.addAdditionalInfoEntry('id', guid);
-      } else {
-        infoDictionary.addAdditionalInfoEntry('integraId', integraId);
       }
+      infoDictionary.addAdditionalInfoEntry('integraId', guid);
 
       if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
     }
@@ -576,7 +569,7 @@ exports.pdf = async (req, res) => {
 
     if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
-      await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`);
+      await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`);
       const pageBox = reader.parsePage(0).getMediaBox();
       const pageWidth = pageBox[2] - pageBox[0];
       const pageHeight = pageBox[3] - pageBox[1];
@@ -607,7 +600,7 @@ exports.pdf = async (req, res) => {
       pageModifier.endContext().writePage();
       pageModifier
         .attachURLLinktoCurrentPage(
-          `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`,
+          `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`,
           pageWidth - 100,
           pageHeight,
           pageWidth,
@@ -639,7 +632,6 @@ exports.pdf = async (req, res) => {
       guid,
       subscription_key,
       {
-        integraId,
         opt1,
         opt2,
         opt3,
@@ -682,7 +674,7 @@ exports.pdf = async (req, res) => {
 exports.doc = async (req, res) => {
   try {
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
-    const integraId = req.headers['integra-id'] || uuidv1();
+    const guid = req.headers['integra-id'] || uuidv1();
     const opt1 = req.headers.opt1;
     const opt2 = req.headers.opt2;
     const opt3 = req.headers.opt3;
@@ -709,13 +701,12 @@ exports.doc = async (req, res) => {
     }
     infoDictionary.addAdditionalInfoEntry('infoJSON', JSON.stringify(meta));
     infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
-    const guid = uuidv1();
     infoDictionary.addAdditionalInfoEntry('id', guid);
     if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
 
     if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
-      await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`);
+      await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`);
       const pageBox = reader.parsePage(0).getMediaBox();
       const pageWidth = pageBox[2] - pageBox[0];
       const pageHeight = pageBox[3] - pageBox[1];
@@ -746,7 +737,7 @@ exports.doc = async (req, res) => {
       pageModifier.endContext().writePage();
       pageModifier
         .attachURLLinktoCurrentPage(
-          `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`,
+          `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`,
           pageWidth - 100,
           pageHeight,
           pageWidth,
@@ -762,7 +753,6 @@ exports.doc = async (req, res) => {
     await renameFileAsync(`modified/${req.file.filename}`, `modified/${fileName}`);
 
     const encryptedData = await registerIdentity(`modified/${fileName}`, guid, subscription_key, {
-      integraId,
       opt1,
       opt2,
       opt3,
@@ -1356,7 +1346,7 @@ exports.docassemble = async (req, res) => {
     fillForm(writer, meta);
 
     // Add QR Code into first page
-    await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`);
+    await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`);
     const pageBox = reader.parsePage(0).getMediaBox();
     const pageWidth = pageBox[2] - pageBox[0];
     const pageHeight = pageBox[3] - pageBox[1];
@@ -1380,7 +1370,7 @@ exports.docassemble = async (req, res) => {
     pageModifier.endContext().writePage();
     pageModifier
       .attachURLLinktoCurrentPage(
-        `https://www.verifiedbyintegra.com/?guid=${guid}&net=${isProd ? 'test' : 'net'}`,
+        `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`,
         pageWidth - 100,
         pageHeight,
         pageWidth,
@@ -1470,6 +1460,35 @@ exports.recordExist = async (req, res) => {
       });
     } else {
       res.status(500).send("Record doesn't exist");
+    }
+  } catch (err) {
+    res.status(err.statusCode || 500).send(err);
+  }
+};
+exports.identityExist = async (req, res) => {
+  try {
+    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    const response = await fetch(`${BLOCKCHAIN_API_URL}/identityexists/${req.params.guid}`, {
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': subscription_key,
+      },
+    });
+    const result = await response.json();
+    if (result.statusCode === 401) {
+      throw { statusCode: 401, message: result.message };
+    }
+    if (result.exists) {
+      res.send({
+        integraId: result.data.integraId,
+        value: result.data.value,
+        metaData: result.data.metaData,
+        transactionId: result.data.transactionId,
+        creationDate: moment(result.data.creationDate).format('LLL'),
+      });
+    } else {
+      res.status(500).send("Identity doesn't exist");
     }
   } catch (err) {
     res.status(err.statusCode || 500).send(err);

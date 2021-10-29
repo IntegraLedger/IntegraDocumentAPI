@@ -443,7 +443,7 @@ router.get('/QRVerify/:guid', core.qrVerify);
  * path:
  *  /recordExist/{guid}:
  *    get:
- *      description: Check if document(pdf & docx) is already registered by two APIs /pdf and /doc
+ *      description: Check if document(pdf & docx) is already registered by /registerIdentity
  *      tags: [Smart Doc]
  *      parameters:
  *        - in: header
@@ -461,6 +461,30 @@ router.get('/QRVerify/:guid', core.qrVerify);
  *          description: return document registration record.
  */
 router.get('/recordExist/:guid', core.recordExist);
+
+/**
+ * @swagger
+ * path:
+ *  /identityExist/{guid}:
+ *    get:
+ *      description: Check if document(pdf & docx) is already registered by /registerIdentity
+ *      tags: [Smart Doc]
+ *      parameters:
+ *        - in: header
+ *          name: x-subscription-key
+ *          schema:
+ *            type: string
+ *        - in: path
+ *          name: guid
+ *          schema:
+ *            type: string
+ *          required: true
+ *          description: IntegraId of the file to check
+ *      responses:
+ *        "200":
+ *          description: return document registration data.
+ */
+router.get('/identityExist/:guid', core.identityExist);
 
 /**
  * @swagger
