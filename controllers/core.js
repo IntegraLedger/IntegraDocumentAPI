@@ -565,7 +565,15 @@ exports.pdf = async (req, res) => {
 
     // Fill form fields
     meta.id = guid;
-    fillForm(writer, meta);
+    fillForm(writer, meta, {
+      defaultTextOptions: {
+        font: writer.getFontForFile(`${__dirname}/../arial.ttf`),
+        size: cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY ? 20 : 10,
+        colorspace: 'gray',
+        color: 0,
+      },
+      debug: false,
+    });
 
     if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
@@ -1343,7 +1351,15 @@ exports.docassemble = async (req, res) => {
 
     // Fill form fields
     meta.id = guid;
-    fillForm(writer, meta);
+    fillForm(writer, meta, {
+      defaultTextOptions: {
+        font: writer.getFontForFile(`${__dirname}/../arial.ttf`),
+        size: 10,
+        colorspace: 'gray',
+        color: 0,
+      },
+      debug: false,
+    });
 
     // Add QR Code into first page
     await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`);
