@@ -473,6 +473,10 @@ exports.pdf = async (req, res) => {
       ? cartridgeType
       : 'CartridgeGeneric';
 
+    if (req.query.type === 'glh' && cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+      readingFileName = `${CARTRIDGE_TYPE_PRIVATE_KEY}_GLH`;
+    }
+
     const isHedgePublic = req.query.type === 'hedgefund' && cartridgeType === CARTRIDGE_TYPE_PERSONAL && req.query.private_id;
     if (req.query.type === 'hedgefund' && cartridgeType === CARTRIDGE_TYPE_PERSONAL) {
       readingFileName = 'Personal_Private';
