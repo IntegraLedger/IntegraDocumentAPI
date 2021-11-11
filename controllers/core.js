@@ -502,19 +502,21 @@ exports.pdf = async (req, res) => {
       infoDictionary.addAdditionalInfoEntry('formJSON', data_form || '{}');
     }
 
-    let guid;
-    if ([CARTRIDGE_TYPE_ATTESTATION, CARTRIDGE_TYPE_PRIVATE_KEY].includes(cartridgeType)) {
-      // GUID is generated on frontent sides
-      guid = existingGuid;
+    let qrcodeGuid;
+    if (CARTRIDGE_TYPE_ATTESTATION === cartridgeType) {
+      qrcodeGuid = existingGuid;
     } else {
-      guid = !isHedgePublic ? integraId : req.query.private_id;
+      qrcodeGuid = !isHedgePublic ? integraId : req.query.private_id;
     }
 
     if (cartridgeType !== CARTRIDGE_TYPE_ATTESTATION) {
       if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
-        meta.integraId = guid;
+        meta.integraId = existingGuid;
+        infoDictionary.addAdditionalInfoEntry('integraId', existingGuid);
+        infoDictionary.addAdditionalInfoEntry('walletId', qrcodeGuid);
+      } else {
+        infoDictionary.addAdditionalInfoEntry('integraId', qrcodeGuid);
       }
-      infoDictionary.addAdditionalInfoEntry('integraId', guid);
 
       if (master_id) infoDictionary.addAdditionalInfoEntry('master_id', master_id);
     }
@@ -526,8 +528,12 @@ exports.pdf = async (req, res) => {
       const pubkeyString = publicKey.export({ type: 'pkcs1', format: 'pem' });
       const privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
 
-      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&integraId=${guid}`, {
+      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey`, {
         method: 'post',
+        body: JSON.stringify({
+          integraId: qrcodeGuid,
+          keyValue: pubkeyString,
+        }),
         headers: {
           'Content-Type': 'application/json',
           'Ocp-Apim-Subscription-Key': subscription_key,
@@ -548,8 +554,12 @@ exports.pdf = async (req, res) => {
       const pubkeyString = publicKey.export({ type: 'pkcs1', format: 'pem' });
       let privkeyString = privateKey.export({ type: 'pkcs1', format: 'pem' });
 
-      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey?identityId=${guid}&keyValue=${pubkeyString}&integraId=${guid}`, {
+      const response = await fetch(`${BLOCKCHAIN_API_URL}/registerKey`, {
         method: 'post',
+        body: JSON.stringify({
+          integraId: existingGuid,
+          keyValue: pubkeyString,
+        }),
         headers: {
           'Content-Type': 'application/json',
           'Ocp-Apim-Subscription-Key': subscription_key,
@@ -568,7 +578,6 @@ exports.pdf = async (req, res) => {
     }
 
     // Fill form fields
-    meta.id = guid;
     fillForm(writer, meta, {
       defaultTextOptions: {
         font: writer.getFontForFile(`${__dirname}/../arial.ttf`),
@@ -581,7 +590,12 @@ exports.pdf = async (req, res) => {
 
     if (!hide_qr || hide_qr === 'false') {
       // Add QR Code into first page
-      await QRCode.toFile('qr.png', `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`);
+      let url = `https://www.verifiedbyintegra.com/?id=${qrcodeGuid}&net=${isProd ? 'test' : 'net'}`;
+      if (cartridgeType === CARTRIDGE_TYPE_PRIVATE_KEY) {
+        url += '&wallet=true';
+      }
+
+      await QRCode.toFile('qr.png', url);
       const pageBox = reader.parsePage(0).getMediaBox();
       const pageWidth = pageBox[2] - pageBox[0];
       const pageHeight = pageBox[3] - pageBox[1];
@@ -611,13 +625,7 @@ exports.pdf = async (req, res) => {
       });
       pageModifier.endContext().writePage();
       pageModifier
-        .attachURLLinktoCurrentPage(
-          `https://www.verifiedbyintegra.com/?id=${guid}&net=${isProd ? 'test' : 'net'}`,
-          pageWidth - 100,
-          pageHeight,
-          pageWidth,
-          pageHeight - 100
-        )
+        .attachURLLinktoCurrentPage(url, pageWidth - 100, pageHeight, pageWidth, pageHeight - 100)
         .endContext()
         .writePage();
     }
@@ -641,7 +649,7 @@ exports.pdf = async (req, res) => {
 
     const encryptedData = await registerIdentity(
       `modified/${fileName}`,
-      guid,
+      qrcodeGuid,
       subscription_key,
       {
         opt1,
@@ -666,7 +674,7 @@ exports.pdf = async (req, res) => {
       if (req.query.type === 'hedgefund' && cartridgeType === CARTRIDGE_TYPE_PERSONAL) finalFileName = `${readingFileName}.pdf`;
     }
     res.setHeader('file-name', finalFileName);
-    res.setHeader('id', guid);
+    res.setHeader('id', qrcodeGuid);
     if (!isHedgePublic) {
       res.setHeader('hash', encryptedData);
     }
