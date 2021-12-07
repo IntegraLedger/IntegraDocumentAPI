@@ -8,6 +8,7 @@ const forms = require('./forms');
 const tfa = require('./tfa');
 const documentSets = require('./documentSets');
 const confirms = require('./confirms');
+const tokens = require('./tokens');
 
 router.use('/', core);
 router.use('/api/users', users);
@@ -15,5 +16,6 @@ router.use('/api/forms', forms);
 router.use('/api/tfa', tfa);
 router.use('/api/document_sets', documentSets);
 router.use('/api/confirms', confirms);
+router.use('/api/tokens', tokens);
 
 module.exports = router;

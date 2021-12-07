@@ -4,7 +4,7 @@ const users = require('../models/users');
 const config = require('../config/config.json');
 
 exports.signup = (req, res) => {
-  const { email, password, first_name, last_name } = req.body;
+  const { email, password, first_name, last_name, from } = req.body;
 
   if (!email || !password) {
     res.status(400).json({ message: 'Invalid Request!' });
@@ -21,6 +21,7 @@ exports.signup = (req, res) => {
             password: hash,
             first_name,
             last_name,
+            from,
           });
 
           newUser.save();
@@ -29,6 +30,7 @@ exports.signup = (req, res) => {
             email: newUser.email,
             first_name: newUser.first_name,
             last_name: newUser.last_name,
+            from: newUser.from,
           };
           const token = jwt.sign(info, config.secret, { expiresIn: config.expiresIn });
 
@@ -71,6 +73,7 @@ exports.login = (req, res) => {
             email: user.email,
             first_name: user.first_name,
             last_name: user.last_name,
+            from: user.from,
           };
           res.json({
             succeed: true,
