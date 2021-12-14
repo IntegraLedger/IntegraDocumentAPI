@@ -10,6 +10,8 @@ const TokensSchema = new Schema({
   company: { type: String },
   reason: { type: String },
   status: { type: String },
+  integra_id: { type: String },
+  pass_phrase: { type: String },
 });
 
 module.exports = mongoose.model('tokens', TokensSchema);

@@ -78,6 +78,7 @@ const BLOCKCHAIN_API_URL = isProd ? 'https://integraledger.azure-api.net/api/v1.
 const CARTRIDGE_TYPE_PRIVATE_KEY = 'PrivateKey';
 const CARTRIDGE_TYPE_ATTESTATION = 'Attestation';
 const CARTRIDGE_TYPE_PERSONAL = 'Personal';
+const CARTRIDGE_TYPE_TOKEN_VOUCHER = 'TokenVoucher';
 
 const getValue = async (data, subscriptionKey) => {
   const response = await fetch(`${BLOCKCHAIN_API_URL}/valueexists/${data}`, {
@@ -469,6 +470,7 @@ exports.pdf = async (req, res) => {
       'Invoice',
       CARTRIDGE_TYPE_PRIVATE_KEY,
       CARTRIDGE_TYPE_ATTESTATION,
+      CARTRIDGE_TYPE_TOKEN_VOUCHER,
     ].includes(cartridgeType)
       ? cartridgeType
       : 'CartridgeGeneric';
