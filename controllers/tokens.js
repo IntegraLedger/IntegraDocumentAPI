@@ -89,7 +89,7 @@ exports.sendEmail = async (req, res) => {
   try {
     const { email, filename, integra_id } = req.body;
     const attachment = fs.readFileSync(req.file.path).toString('base64');
-    const subject = 'New Integra Encrypted Document';
+    const subject = 'Integra Token Issuance';
     const template =
       'The tokens you requested have been issued!<br><br>' +
       // eslint-disable-next-line max-len
