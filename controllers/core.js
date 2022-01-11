@@ -85,7 +85,7 @@ const getValue = async (data, subscriptionKey) => {
     method: 'get',
     headers: {
       'Content-Type': 'application/json',
-      'Ocp-Apim-Subscription-Key': subscriptionKey,
+      // 'Ocp-Apim-Subscription-Key': subscriptionKey,
     },
   });
   const result = await response.json();
@@ -127,7 +127,7 @@ const registerIdentity = async (filePath, integraId, subscriptionKey, params = {
     }),
     headers: {
       'Content-Type': 'application/json',
-      'Ocp-Apim-Subscription-Key': subscriptionKey,
+      // 'Ocp-Apim-Subscription-Key': subscriptionKey,
     },
   });
   const result = await response.json();
@@ -538,7 +538,7 @@ exports.pdf = async (req, res) => {
         }),
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': subscription_key,
+          // 'Ocp-Apim-Subscription-Key': subscription_key,
         },
       });
       const result = await response.json();
@@ -564,7 +564,7 @@ exports.pdf = async (req, res) => {
         }),
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': subscription_key,
+          // 'Ocp-Apim-Subscription-Key': subscription_key,
         },
       });
       const result = await response.json();
@@ -1439,12 +1439,12 @@ exports.docassemble = async (req, res) => {
 
 exports.qrVerify = async (req, res) => {
   try {
-    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    // const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': subscription_key,
+        // 'Ocp-Apim-Subscription-Key': subscription_key,
       },
     });
     const result = await response.json();
@@ -1468,12 +1468,12 @@ exports.qrVerify = async (req, res) => {
 
 exports.recordExist = async (req, res) => {
   try {
-    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    // const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/recordexists/${req.params.guid}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': subscription_key,
+        // 'Ocp-Apim-Subscription-Key': subscription_key,
       },
     });
     const result = await response.json();
@@ -1497,12 +1497,12 @@ exports.recordExist = async (req, res) => {
 };
 exports.identityExist = async (req, res) => {
   try {
-    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    // const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/identityexists/${req.params.guid}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': subscription_key,
+        // 'Ocp-Apim-Subscription-Key': subscription_key,
       },
     });
     const result = await response.json();
@@ -1527,12 +1527,12 @@ exports.identityExist = async (req, res) => {
 
 exports.publicKey = async (req, res) => {
   try {
-    const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
+    // const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const response = await fetch(`${BLOCKCHAIN_API_URL}/keyforowner/${req.params.id}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'Ocp-Apim-Subscription-Key': subscription_key,
+        // 'Ocp-Apim-Subscription-Key': subscription_key,
       },
     });
     const responseJson = await response.json();
