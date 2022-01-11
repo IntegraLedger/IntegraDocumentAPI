@@ -51,11 +51,6 @@ const smartDocUpload = multer({
  *      summary: Accept PDF, verify it and return meta data if authentic
  *      description: Accept PDF, verify it and return meta data if authentic
  *      tags: [Smart Doc]
- *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *      requestBody:
  *        required: true
  *        content:
@@ -90,11 +85,6 @@ router.post('/analyze', upload.single('file'), core.analyze);
  *      summary: Accept Docx file, verify it and return meta data if authenticated
  *      description: Accept Docx file, verify it and return meta data if authenticated
  *      tags: [Smart Doc]
- *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *      requestBody:
  *        required: true
  *        content:
@@ -166,10 +156,6 @@ router.post('/analyzeDocxNohash', upload.single('file'), core.analyzeDocxNohash)
  *            type: string
  *          description: used for hedgefund to create private and public personal cartridge documents.
  *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
- *        - in: header
  *          name: integra-id
  *          schema:
  *            type: string
@@ -199,10 +185,6 @@ router.post('/pdf', upload.single('file'), core.pdf);
  *      description: Create signed pdf format smart document with adding metadata, filling form fields and adding QR code
  *      tags: [Smart Doc]
  *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *        - in: header
  *          name: integra-id
  *          schema:
@@ -259,11 +241,6 @@ router.post('/doc', upload.single('file'), core.doc);
  *    post:
  *      description: Create signed docx format smart document with adding metadata, filling form fields of docx file and adding QR code
  *      tags: [Smart Doc]
- *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *      requestBody:
  *        required: true
  *        content:
@@ -314,11 +291,6 @@ router.post(
  *    post:
  *      description: Create signed xlsx format smart document with adding metadata, filling form fields of docx file and adding QR code
  *      tags: [Smart Doc]
- *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *      requestBody:
  *        required: true
  *        content:
@@ -363,11 +335,6 @@ router.post(
  *    post:
  *      description: Create signed docx format smart document which opens addin panel automatically with adding metadata, filling form fields of docx file and adding QR code
  *      tags: [Smart Doc]
- *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *      requestBody:
  *        required: true
  *        content:
@@ -422,10 +389,6 @@ router.post('/docassemble', core.docassemble);
  *      description: Check if document(pdf & docx) is already registered by two APIs /pdf and /doc
  *      tags: [Smart Doc]
  *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *        - in: path
  *          name: guid
  *          schema:
@@ -446,10 +409,6 @@ router.get('/QRVerify/:guid', core.qrVerify);
  *      description: Check if document(pdf & docx) is already registered by /registerIdentity
  *      tags: [Smart Doc]
  *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *        - in: path
  *          name: guid
  *          schema:
@@ -470,10 +429,6 @@ router.get('/recordExist/:guid', core.recordExist);
  *      description: Check if document(pdf & docx) is already registered by /registerIdentity
  *      tags: [Smart Doc]
  *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *        - in: path
  *          name: guid
  *          schema:
@@ -494,10 +449,6 @@ router.get('/identityExist/:guid', core.identityExist);
  *      description: Get public key of the smart document
  *      tags: [Smart Doc]
  *      parameters:
- *        - in: header
- *          name: x-subscription-key
- *          schema:
- *            type: string
  *        - in: path
  *          name: id
  *          schema:
