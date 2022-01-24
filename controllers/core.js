@@ -643,9 +643,9 @@ exports.pdf = async (req, res) => {
     if (key_data) {
       const { pass_phrase: password, private_key: encryptedPrivateKey } = JSON.parse(key_data);
       const decryptedPrivateKey = cryptoJs.AES.decrypt(encryptedPrivateKey, password).toString(cryptoJs.enc.Utf8);
-
-      const fileData = await readFileAsync(req.file.path);
-      const hash = cryptoJs.SHA256(fileData).toString(cryptoJs.enc.Hex);
+      const fileData = await readFileAsync(`modified/${fileName}`);
+      // const hash = cryptoJs.SHA256(fileData).toString(cryptoJs.enc.Hex);
+      const hash = crypto.createHash('sha256').update(fileData).digest('hex');
       signedHash = encryptStringWithRsaPrivateKey(hash, decryptedPrivateKey);
     }
 
