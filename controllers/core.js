@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable newline-per-chained-call */
 /* eslint-disable no-throw-literal */
@@ -133,6 +134,9 @@ const registerIdentity = async (filePath, integraId, subscriptionKey, params = {
   const result = await response.json();
   if (result.statusCode === 401) {
     throw { statusCode: 401, message: result.message };
+  }
+  if (result.statusCode === 400) {
+    throw { statusCode: 400, message: result.message };
   }
   return encryptedData;
 };
@@ -297,7 +301,18 @@ const generateQRData = async (guid, logoPath) => {
 exports.analyze = async (req, res) => {
   try {
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
-    const fileData = await readFileAsync(req.file.path);
+    let filePath;
+    if (!req.file) {
+      const fileName = uuidv1();
+      const base64Data = req.body.file;
+      filePath = `modified/${fileName}`;
+      await fs.writeFileSync(filePath, base64Data, {
+        encoding: 'base64',
+      });
+    } else {
+      filePath = req.file.path;
+    }
+    const fileData = await readFileAsync(filePath);
     const encryptedData = crypto.createHash('sha256').update(fileData).digest('hex');
     const responseJson = await getValue(encryptedData, subscription_key);
     if (responseJson.statusCode === 401) {
@@ -305,7 +320,7 @@ exports.analyze = async (req, res) => {
     }
     let result = {};
     if (responseJson.exists) {
-      const pdfDoc = new HummusRecipe(req.file.path);
+      const pdfDoc = new HummusRecipe(filePath);
       const info = pdfDoc.info();
       result = {
         result: info,
@@ -315,7 +330,7 @@ exports.analyze = async (req, res) => {
     } else {
       result = { result: false };
     }
-    fs.unlinkSync(req.file.path);
+    fs.unlinkSync(filePath);
     res.send(result);
   } catch (err) {
     res.status(err.statusCode || 500).send(err);
@@ -448,7 +463,20 @@ exports.pdf = async (req, res) => {
       key_data,
       existingGuid,
       tokenized_pubkey_id: integraPublicKeyId,
+      file,
     } = req.body;
+    let filePath;
+    let srcFileName;
+    if (req.file) {
+      srcFileName = req.file.filename;
+      filePath = req.file.path;
+    } else if (file) {
+      srcFileName = uuidv1();
+      filePath = `uploads/${srcFileName}.pdf`;
+      await fs.writeFileSync(filePath, file, {
+        encoding: 'base64',
+      });
+    }
     const subscription_key = isProd ? process.env.SUBSCRIPTION_KEY : req.headers['x-subscription-key'];
     const integraId = req.headers['integra-id'] || uuidv1();
     const opt1 = req.headers.opt1;
@@ -486,11 +514,11 @@ exports.pdf = async (req, res) => {
     }
 
     // Create pdf writer
-    const writer = hummus.createWriterToModify(req.file ? req.file.path : `templates/${readingFileName}.pdf`, {
-      modifiedFilePath: `modified/${req.file ? req.file.filename : `${readingFileName}.pdf`}`,
+    const writer = hummus.createWriterToModify(req.file || file ? filePath : `templates/${readingFileName}.pdf`, {
+      modifiedFilePath: `modified/${req.file || file ? srcFileName : `${readingFileName}.pdf`}`,
     });
 
-    const reader = hummus.createReader(req.file ? req.file.path : `templates/${readingFileName}.pdf`);
+    const reader = hummus.createReader(req.file || file ? filePath : `templates/${readingFileName}.pdf`);
 
     // Add meta data
     const infoDictionary = writer.getDocumentContext().getInfoDictionary();
@@ -611,14 +639,14 @@ exports.pdf = async (req, res) => {
         },
       });
 
-      if (req.file && meta.organization_logo) {
+      if ((req.file || file) && meta.organization_logo) {
         const base64Data = meta.organization_logo.split(',')[1];
         await fs.writeFileSync('qr-logo.png', base64Data, {
           encoding: 'base64',
         });
       }
 
-      ctx.drawImage(pageWidth - 65, pageHeight - 65, req.file && meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
+      ctx.drawImage(pageWidth - 65, pageHeight - 65, (req.file || file) && meta.organization_logo ? 'qr-logo.png' : 'integra-qr.png', {
         transformation: {
           width: 30,
           height: 30,
@@ -636,8 +664,10 @@ exports.pdf = async (req, res) => {
     // Generate file name (Attach 'SmartDoc' to original filename)
     const fileName = req.file
       ? `${req.file.originalname.substring(0, req.file.originalname.length - 4)}_SmartDoc.pdf`
+      : file
+      ? `${srcFileName.substring(0, srcFileName.length - 4)}_SmartDoc.pdf`
       : `${readingFileName}_Cartridge.pdf`;
-    await renameFileAsync(`modified/${req.file ? req.file.filename : `${readingFileName}.pdf`}`, `modified/${fileName}`);
+    await renameFileAsync(`modified/${req.file || file ? srcFileName : `${readingFileName}.pdf`}`, `modified/${fileName}`);
 
     let signedHash;
     if (key_data) {
@@ -666,7 +696,7 @@ exports.pdf = async (req, res) => {
     // Attach file name to response header
     res.setHeader('Access-Control-Expose-Headers', 'file-name, id, hash');
     let finalFileName;
-    if (req.file) finalFileName = fileName;
+    if (req.file || file) finalFileName = fileName;
     else {
       if (cartridgeType === 'Organization') finalFileName = `${meta.organization_name} Key.pdf`;
       else if (cartridgeType === CARTRIDGE_TYPE_PERSONAL) finalFileName = `${meta.given_name} ${meta.family_name} Key.pdf`;
@@ -684,8 +714,8 @@ exports.pdf = async (req, res) => {
     res.download(`modified/${fileName}`, fileName, () => {
       fs.unlinkSync(`modified/${fileName}`);
     });
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
+    if (req.file || file) {
+      fs.unlinkSync(filePath);
     }
   } catch (err) {
     console.log(err);
