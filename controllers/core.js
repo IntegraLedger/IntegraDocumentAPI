@@ -1971,7 +1971,7 @@ exports.verifyAttestation = async (req, res) => {
 
     // Get attestation file
     const content = fs.readFileSync(srcPath);
-    const srcFile = await PDFDocument.load(content);
+    const srcFile = await PDFDocument.load(content, { ignoreEncryption: true });
     const attachments = extractAttachments(srcFile);
     if (attachments.length === 0) {
       fs.unlinkSync(srcPath);
